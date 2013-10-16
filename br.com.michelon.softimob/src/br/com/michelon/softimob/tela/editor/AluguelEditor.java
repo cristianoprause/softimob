@@ -1,12 +1,15 @@
 package br.com.michelon.softimob.tela.editor;
 
 import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.List;
 
+import org.apache.log4j.Logger;
 import org.eclipse.core.databinding.Binding;
 import org.eclipse.core.databinding.DataBindingContext;
 import org.eclipse.core.databinding.beans.PojoProperties;
-import org.eclipse.core.databinding.observable.list.IObservableList;
 import org.eclipse.core.databinding.observable.value.IObservableValue;
 import org.eclipse.core.databinding.observable.value.WritableValue;
 import org.eclipse.jface.databinding.fieldassist.ControlDecorationSupport;
@@ -15,16 +18,19 @@ import org.eclipse.jface.databinding.viewers.ObservableListContentProvider;
 import org.eclipse.jface.databinding.viewers.ViewerProperties;
 import org.eclipse.jface.dialogs.IDialogConstants;
 import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.ColumnLabelProvider;
 import org.eclipse.jface.viewers.ComboViewer;
+import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.TableViewer;
+import org.eclipse.jface.viewers.TableViewerColumn;
 import org.eclipse.nebula.jface.viewer.radiogroup.RadioGroupViewer;
-import org.eclipse.nebula.widgets.formattedtext.FormattedText;
-import org.eclipse.nebula.widgets.formattedtext.NumberFormatter;
 import org.eclipse.nebula.widgets.radiogroup.RadioGroup;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.CTabFolder;
 import org.eclipse.swt.custom.CTabItem;
+import org.eclipse.swt.events.FocusAdapter;
+import org.eclipse.swt.events.FocusEvent;
 import org.eclipse.swt.events.SelectionAdapter;
 import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
@@ -32,28 +38,34 @@ import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.swt.widgets.Group;
 import org.eclipse.swt.widgets.Label;
-import org.eclipse.swt.widgets.List;
 import org.eclipse.swt.widgets.Menu;
 import org.eclipse.swt.widgets.Table;
+import org.eclipse.swt.widgets.TableColumn;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.wb.swt.ImageRepository;
+import org.joda.time.DateMidnight;
+import org.joda.time.Months;
 
 import br.com.michelon.softimob.aplicacao.exception.ParametroNaoInformadoException;
 import br.com.michelon.softimob.aplicacao.helper.DialogHelper;
+import br.com.michelon.softimob.aplicacao.helper.FormatterHelper;
 import br.com.michelon.softimob.aplicacao.helper.SelectionHelper;
 import br.com.michelon.softimob.aplicacao.helper.ShellHelper;
 import br.com.michelon.softimob.aplicacao.helper.WidgetHelper;
 import br.com.michelon.softimob.aplicacao.helper.listElementDialog.ListElementDialogHelper;
 import br.com.michelon.softimob.aplicacao.helper.listElementDialog.ListElementDialogHelper.TipoDialog;
-import br.com.michelon.softimob.aplicacao.service.AcontecimentoChamadoService;
 import br.com.michelon.softimob.aplicacao.service.AluguelService;
 import br.com.michelon.softimob.aplicacao.service.ChamadoReformaService;
 import br.com.michelon.softimob.aplicacao.service.CheckListService;
 import br.com.michelon.softimob.aplicacao.service.ComissaoService;
+import br.com.michelon.softimob.aplicacao.service.ContaPagarReceberService;
+import br.com.michelon.softimob.aplicacao.service.ContratoPrestacaoServicoService;
 import br.com.michelon.softimob.aplicacao.service.GenericService;
+import br.com.michelon.softimob.aplicacao.service.IndiceService;
 import br.com.michelon.softimob.aplicacao.service.VistoriaService;
 import br.com.michelon.softimob.modelo.AcontecimentoChamado;
 import br.com.michelon.softimob.modelo.Aluguel;
@@ -61,30 +73,37 @@ import br.com.michelon.softimob.modelo.ChamadoReforma;
 import br.com.michelon.softimob.modelo.Cliente;
 import br.com.michelon.softimob.modelo.Comissao;
 import br.com.michelon.softimob.modelo.Comissionado;
+import br.com.michelon.softimob.modelo.ContaPagarReceber;
 import br.com.michelon.softimob.modelo.ContratoPrestacaoServico;
 import br.com.michelon.softimob.modelo.FinalizacaoChamadoReforma;
 import br.com.michelon.softimob.modelo.Funcionario;
+import br.com.michelon.softimob.modelo.Indice;
 import br.com.michelon.softimob.modelo.ItemCheckList;
 import br.com.michelon.softimob.modelo.ModeloContrato;
 import br.com.michelon.softimob.modelo.ParametrosEmpresa;
 import br.com.michelon.softimob.modelo.VendaAluguel;
 import br.com.michelon.softimob.modelo.Vistoria;
 import br.com.michelon.softimob.tela.binding.updateValueStrategy.UVSHelper;
+import br.com.michelon.softimob.tela.dialog.AcontecimentoChamadoDialog;
 import br.com.michelon.softimob.tela.dialog.AdicionarContaPagarReformaDialog;
+import br.com.michelon.softimob.tela.dialog.ParcelaDialog;
 import br.com.michelon.softimob.tela.widget.DateStringValueFormatter;
 import br.com.michelon.softimob.tela.widget.DateTextField;
-import br.com.michelon.softimob.tela.widget.DateTimeTextField;
+import br.com.michelon.softimob.tela.widget.LoadOnFocus;
 import br.com.michelon.softimob.tela.widget.MoneyTextField;
 import br.com.michelon.softimob.tela.widget.NullStringValueFormatter;
+import br.com.michelon.softimob.tela.widget.NumberTextField2;
 import br.com.michelon.softimob.tela.widget.PhotoComposite;
+import br.com.michelon.softimob.tela.widget.TimeStringValueFormatter;
 import de.ralfebert.rcputils.tables.TableViewerBuilder;
 
 public class AluguelEditor extends GenericEditor<Aluguel>{
 	public static final String ID = "br.com.michelon.softimob.tela.editor.AluguelEditor";
 	
+	private Logger log = Logger.getLogger(getClass());
+	
 	private WritableValue valueVistoria = WritableValue.withValueType(Vistoria.class);
 	private WritableValue valueChamado = WritableValue.withValueType(ChamadoReforma.class);
-	private WritableValue valueAcontecimentoChamado = WritableValue.withValueType(AcontecimentoChamado.class);
 	private WritableValue valueFinalizacaoChamado = WritableValue.withValueType(FinalizacaoChamadoReforma.class);
 	private WritableValue valueComissao = WritableValue.withValueType(Comissao.class);
 	
@@ -100,37 +119,48 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 	private Text txtDescricaoFinalReforma;
 	private Text txtFuncionarioFinalizacaoReforma;
 	private Text txtFinalizacaoReforma;
-	private Text txtDataAcontecimentoChamado;
 	private Text txtProblemaReforma;
 	private Text txtFuncionarioReforma;
 	private Text txtDataChamado;
 	private Text txtObservacoesVistoria;
-	private Text text_18;
 	private Text txtFuncionarioVistoria;
 	private Text txtDataVistoria;
-	private Text txtFuncionarioAndamentoReforma;
-	private Text txtDescricaoAndamentoReforma;
 	private Text txtComissionado;
-	private Text text_9;
 	private Text txtModeloContrato;
 	private Text txtValorComissao;
 	private Text txtIdChamado;
 	private Text txtDataVencimentoComissao;
-
 	private TableViewerBuilder tvbChamadoGeral;
-	private TableViewerBuilder tvbAndamentoChamado;
+	private TableViewerBuilder tvbAcontecimentoChamado;
 	private TableViewerBuilder tvbVistoria;
 	private TableViewer tvVistoria;
-	private TableViewer tvAndamentoChamado;
+	private TableViewer tvAcontecimentoChamado;
 	private TableViewer tvChamadoGeral;
 	private TableViewer tvComissao;
 	private TableViewer tvCheckListAluguel;
 	private TableViewer tvCheckListVistoria;
-
+	private TableViewer tvParcelas;
 	private RadioGroupViewer radiouGroupStatusReforma;
-	private List listContasReforma;
-
 	private CTabFolder tfItens;
+	private Composite cpChamados;
+	private Composite cpVistoria;
+	private Composite cpComissao;
+	private Table tableContasFinalizacaoReforma;
+	private TableViewer tvContasFinalizacaoChamadoReforma;
+	private ComboViewer cvAjuste;
+	private PhotoComposite photoComposite;
+	private Button btnSelecionarContrato;
+	private Button btnRemoveContrato;
+	private Button btnSelecionarCliente;
+	private Button btnRemoveCliente;
+	private Button btnSelecionarFiador;
+	private Button btnRemoverFiador;
+	private Button btnRemoveFuncionario;
+	private Button btnSelecFuncionario;
+	private Button btnAddContrato;
+	private Button btnRemoverContrato;
+	private DateTextField dtVencimento;
+	private DateTextField dtAssinaturaContrato;
 
 	public AluguelEditor() {
 		super(Aluguel.class);
@@ -149,13 +179,13 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		text = new Text(parent, SWT.BORDER | SWT.READ_ONLY);
 		text.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 		
-		Button btnSelecionar = new Button(parent, SWT.NONE);
-		btnSelecionar.setImage(ImageRepository.SEARCH_16.getImage());
-		ListElementDialogHelper.addSelectionListDialogToButton(TipoDialog.CONTRATO_SERVICO_LOCACAO, btnSelecionar, value, "contrato");
+		btnSelecionarContrato = new Button(parent, SWT.NONE);
+		btnSelecionarContrato.setImage(ImageRepository.SEARCH_16.getImage());
+		ListElementDialogHelper.addSelectionListDialogToButton(TipoDialog.CONTRATO_SERVICO_LOCACAO, btnSelecionarContrato, value, "contrato");
 		
-		Button button_3 = new Button(parent, SWT.NONE);
-		button_3.setImage(ImageRepository.REMOVE_16.getImage());
-		ListElementDialogHelper.addSelectionToRemoveButton(button_3, value, "contrato", ContratoPrestacaoServico.class);
+		btnRemoveContrato = new Button(parent, SWT.NONE);
+		btnRemoveContrato.setImage(ImageRepository.REMOVE_16.getImage());
+		ListElementDialogHelper.addSelectionToRemoveButton(btnRemoveContrato, value, "contrato", ContratoPrestacaoServico.class);
 		
 		Label lblFuncionrio = new Label(parent, SWT.NONE);
 		lblFuncionrio.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
@@ -165,13 +195,13 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		txtFuncionario.setEditable(false);
 		txtFuncionario.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 		
-		Button button_2 = new Button(parent, SWT.NONE);
-		button_2.setImage(ImageRepository.SEARCH_16.getImage());
-		ListElementDialogHelper.addSelectionListDialogToButton(TipoDialog.FUNCIONARIO, button_2, value, "funcionario");
+		btnSelecFuncionario = new Button(parent, SWT.NONE);
+		btnSelecFuncionario.setImage(ImageRepository.SEARCH_16.getImage());
+		ListElementDialogHelper.addSelectionListDialogToButton(TipoDialog.FUNCIONARIO, btnSelecFuncionario, value, "funcionario");
 		
-		Button btnt = new Button(parent, SWT.NONE);
-		btnt.setImage(ImageRepository.REMOVE_16.getImage());
-		ListElementDialogHelper.addSelectionToRemoveButton(btnt, value, "funcionario", Funcionario.class);
+		btnRemoveFuncionario = new Button(parent, SWT.NONE);
+		btnRemoveFuncionario.setImage(ImageRepository.REMOVE_16.getImage());
+		ListElementDialogHelper.addSelectionToRemoveButton(btnRemoveFuncionario, value, "funcionario", Funcionario.class);
 		
 		Label lblValor = new Label(parent, SWT.NONE);
 		lblValor.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
@@ -181,14 +211,14 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		txtCliente.setEditable(false);
 		txtCliente.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 		
-		Button button = new Button(parent, SWT.NONE);
-		button.setImage(ImageRepository.SEARCH_16.getImage());
-		ListElementDialogHelper.addSelectionListDialogToButton(TipoDialog.CLIENTE, button, value, "cliente");
+		btnSelecionarCliente = new Button(parent, SWT.NONE);
+		btnSelecionarCliente.setImage(ImageRepository.SEARCH_16.getImage());
+		ListElementDialogHelper.addSelectionListDialogToButton(TipoDialog.CLIENTE, btnSelecionarCliente, value, "cliente");
 		
-		Button button_4 = new Button(parent, SWT.NONE);
-		button_4.setImage(ImageRepository.REMOVE_16.getImage());
-		button_4.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false, 1, 1));
-		ListElementDialogHelper.addSelectionToRemoveButton(button_4, value, "cliente", Cliente.class);
+		btnRemoveCliente = new Button(parent, SWT.NONE);
+		btnRemoveCliente.setImage(ImageRepository.REMOVE_16.getImage());
+		btnRemoveCliente.setLayoutData(new GridData(SWT.CENTER, SWT.CENTER, false, false, 1, 1));
+		ListElementDialogHelper.addSelectionToRemoveButton(btnRemoveCliente, value, "cliente", Cliente.class);
 		
 		Label lblFiador = new Label(parent, SWT.NONE);
 		lblFiador.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
@@ -198,13 +228,13 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		txtFiador.setEditable(false);
 		txtFiador.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 		
-		Button button_1 = new Button(parent, SWT.NONE);
-		button_1.setImage(ImageRepository.SEARCH_16.getImage());
-		ListElementDialogHelper.addSelectionListDialogToButton(TipoDialog.CLIENTE, button_1, value, "fiador");
+		btnSelecionarFiador = new Button(parent, SWT.NONE);
+		btnSelecionarFiador.setImage(ImageRepository.SEARCH_16.getImage());
+		ListElementDialogHelper.addSelectionListDialogToButton(TipoDialog.CLIENTE, btnSelecionarFiador, value, "fiador");
 		
-		Button btnt_1 = new Button(parent, SWT.NONE);
-		btnt_1.setImage(ImageRepository.REMOVE_16.getImage());
-		ListElementDialogHelper.addSelectionToRemoveButton(btnt_1, value, "fiador", Cliente.class);
+		btnRemoverFiador = new Button(parent, SWT.NONE);
+		btnRemoverFiador.setImage(ImageRepository.REMOVE_16.getImage());
+		ListElementDialogHelper.addSelectionToRemoveButton(btnRemoverFiador, value, "fiador", Cliente.class);
 		
 		Label lblModeloContrato = new Label(parent, SWT.NONE);
 		lblModeloContrato.setText("Modelo de Contrato");
@@ -214,11 +244,11 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		txtModeloContrato.setEditable(false);
 		txtModeloContrato.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 		
-		Button btnAddContrato = new Button(parent, SWT.NONE);
+		btnAddContrato = new Button(parent, SWT.NONE);
 		btnAddContrato.setImage(ImageRepository.SEARCH_16.getImage());
 		ListElementDialogHelper.addSelectionListDialogToButton(TipoDialog.MODELO_CONTRATO, btnAddContrato, value, "modeloContrato");
 		
-		Button btnRemoverContrato = new Button(parent, SWT.NONE);
+		btnRemoverContrato = new Button(parent, SWT.NONE);
 		btnRemoverContrato.setImage(ImageRepository.REMOVE_16.getImage());
 		ListElementDialogHelper.addSelectionToRemoveButton(btnRemoverContrato, value, "modeloContrato", ModeloContrato.class);
 		
@@ -226,24 +256,26 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		lblReajuste.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
 		lblReajuste.setText("Reajuste");
 		
-		ComboViewer comboViewer = new ComboViewer(parent, SWT.READ_ONLY);
-		Combo combo = comboViewer.getCombo();
+		cvAjuste = new ComboViewer(parent, SWT.READ_ONLY);
+		Combo combo = cvAjuste.getCombo();
 		combo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 3, 1));
+		cvAjuste.setContentProvider(ArrayContentProvider.getInstance());
+		LoadOnFocus.setFocusGainedListener(cvAjuste, new IndiceService());
 		
 		Label lblData = new Label(parent, SWT.NONE);
 		lblData.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
 		lblData.setText("Data");
 		
-		DateTextField dateTextField = new DateTextField(parent);
-		dateTextField.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 3, 1));
-		txtDataAssinaturaContrato = dateTextField.getControl();
+		dtAssinaturaContrato = new DateTextField(parent);
+		dtAssinaturaContrato.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 3, 1));
+		txtDataAssinaturaContrato = dtAssinaturaContrato.getControl();
 		txtDataAssinaturaContrato.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 		
 		Label lblDurao = new Label(parent, SWT.NONE);
 		lblDurao.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
 		lblDurao.setText("Data de Vencimento");
 		
-		DateTextField dtVencimento = new DateTextField(parent);
+		dtVencimento = new DateTextField(parent);
 		dtVencimento.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 3, 1));
 		txtDataVencimento = dtVencimento.getControl();
 		txtDataVencimento.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
@@ -255,12 +287,6 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		MoneyTextField moneyTextField = new MoneyTextField(parent);
 		txtValor = moneyTextField.getControl();
 		txtValor.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
-		new Label(parent, SWT.NONE);
-		new Label(parent, SWT.NONE);
-		new Label(parent, SWT.NONE);
-		new Label(parent, SWT.NONE);
-		new Label(parent, SWT.NONE);
-		new Label(parent, SWT.NONE);
 		
 		tfItens = new CTabFolder(parent, SWT.BORDER);
 		tfItens.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 8, 1));
@@ -269,16 +295,16 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		CTabItem tbtmComisso = new CTabItem(tfItens, SWT.NONE);
 		tbtmComisso.setText("Comissão");
 		
-		Composite composite = new Composite(tfItens, SWT.NONE);
-		tbtmComisso.setControl(composite);
-		composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
-		composite.setLayout(new GridLayout(1, false));
+		cpComissao = new Composite(tfItens, SWT.NONE);
+		tbtmComisso.setControl(cpComissao);
+		cpComissao.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+		cpComissao.setLayout(new GridLayout(1, false));
 		
-		Composite composite_1 = new Composite(composite, SWT.NONE);
+		Composite composite_1 = new Composite(cpComissao, SWT.NONE);
 		composite_1.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, true, 1, 1));
 		criarTabelaComissao(composite_1);
 
-		Group grpComisso = new Group(composite, SWT.NONE);
+		Group grpComisso = new Group(cpComissao, SWT.NONE);
 		grpComisso.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
 		grpComisso.setText("Comissão");
 		grpComisso.setLayout(new GridLayout(4, false));
@@ -310,16 +336,6 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		new Label(grpComisso, SWT.NONE);
 		new Label(grpComisso, SWT.NONE);
 		
-		Label lblPorcentagem = new Label(grpComisso, SWT.NONE);
-		lblPorcentagem.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
-		lblPorcentagem.setText("Porcentagem");
-		
-		text_9 = new Text(grpComisso, SWT.BORDER);
-		new FormattedText(text_9).setFormatter(new NumberFormatter("###"));
-		text_9.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
-		new Label(grpComisso, SWT.NONE);
-		new Label(grpComisso, SWT.NONE);
-		
 		Label lblValor_2 = new Label(grpComisso, SWT.NONE);
 		lblValor_2.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
 		lblValor_2.setText("Valor");
@@ -327,6 +343,36 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		MoneyTextField moneyValorcomissao = new MoneyTextField(grpComisso);
 		txtValorComissao = moneyValorcomissao.getControl();
 		txtValorComissao.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		new Label(grpComisso, SWT.NONE);
+		new Label(grpComisso, SWT.NONE);
+		
+		Label lblPorcentagem = new Label(grpComisso, SWT.NONE);
+		lblPorcentagem.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
+		lblPorcentagem.setText("Porcentagem");
+		
+		NumberTextField2 numberTextField = new NumberTextField2(grpComisso);
+		Text txtPorcentagem = numberTextField.getControl();
+		txtPorcentagem.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		txtPorcentagem.addFocusListener(new FocusAdapter() {
+			@Override
+			public void focusLost(FocusEvent e) {
+				Text txtPorcentagem = (Text) e.widget;
+				String texto = txtPorcentagem.getText();
+
+				if(texto != null && !texto.isEmpty()){
+					if(getCurrentObject().getValor() != null){
+						Comissao c = (Comissao) valueComissao.getValue();
+						BigDecimal p = FormatterHelper.getDefaultValueFormatterToMoney().parse(texto);
+						
+						BigDecimal valor = getCurrentObject().getValor().multiply(p).divide(new BigDecimal(100));
+						c.setValor(valor);
+						
+						updateTargets();
+					}
+				}
+			}
+		});
+		
 		new Label(grpComisso, SWT.NONE);
 		new Label(grpComisso, SWT.NONE);
 		new Label(grpComisso, SWT.NONE);
@@ -339,20 +385,63 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 				addComissao(valueComissao);
 			}
 		});
+		new Label(grpComisso, SWT.NONE);
+		new Label(grpComisso, SWT.NONE);
+		new Label(grpComisso, SWT.NONE);
+		new Label(grpComisso, SWT.NONE);
+		
+		CTabItem tbtmParcelas = new CTabItem(tfItens, SWT.NONE);
+		tbtmParcelas.setText("Parcelas");
+		
+		Composite composite_4 = new Composite(tfItens, SWT.NONE);
+		tbtmParcelas.setControl(composite_4);
+		composite_4.setLayout(new GridLayout(2, false));
+		
+		Composite composite_5 = new Composite(composite_4, SWT.NONE);
+		composite_5.setLayout(new GridLayout(1, false));
+		composite_5.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 2));
+
+		criarTabelaParcelas(composite_5);
+		
+		Button btnAddParcelas = new Button(composite_4, SWT.NONE);
+		btnAddParcelas.setLayoutData(new GridData(SWT.LEFT, SWT.BOTTOM, false, true, 1, 1));
+		btnAddParcelas.setImage(ImageRepository.ADD_16.getImage());
+		btnAddParcelas.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				ParcelaDialog dialog = new ParcelaDialog(ShellHelper.getActiveShell(), getCurrentObject());
+				if(dialog.open() == IDialogConstants.OK_ID){
+					getCurrentObject().getParcelas().addAll(dialog.getParcelas());
+					tvParcelas.refresh();
+				}
+			}
+		});
+		
+		Button btnRemoveparcelas = new Button(composite_4, SWT.NONE);
+		btnRemoveparcelas.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, true, 1, 1));
+		btnRemoveparcelas.setImage(ImageRepository.REMOVE_16.getImage());
+		btnRemoveparcelas.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				java.util.List<ContaPagarReceber> selecionados = SelectionHelper.getObjects((IStructuredSelection)tvParcelas.getSelection());
+				getCurrentObject().getParcelas().removeAll(selecionados);
+				tvParcelas.refresh();
+			}
+		});
 		
 		CTabItem tbtmVistoria = new CTabItem(tfItens, SWT.NONE);
 		tbtmVistoria.setText("Vistorias");
 		
-		Composite composite_8 = new Composite(tfItens, SWT.NONE);
-		tbtmVistoria.setControl(composite_8);
-		composite_8.setLayout(new GridLayout(1, false));
+		cpVistoria = new Composite(tfItens, SWT.NONE);
+		tbtmVistoria.setControl(cpVistoria);
+		cpVistoria.setLayout(new GridLayout(1, false));
 		
-		Composite cpVistoria = new Composite(composite_8, SWT.NONE);
-		cpVistoria.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+		Composite cpCadVistoria = new Composite(cpVistoria, SWT.NONE);
+		cpCadVistoria.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 		
-		criarTabelaVistoria(cpVistoria);
+		criarTabelaVistoria(cpCadVistoria);
 		
-		CTabFolder tabFolder_1 = new CTabFolder(composite_8, SWT.BORDER);
+		CTabFolder tabFolder_1 = new CTabFolder(cpVistoria, SWT.BORDER);
 		tabFolder_1.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, true, 1, 1));
 		tabFolder_1.setSelectionBackground(Display.getCurrent().getSystemColor(SWT.COLOR_TITLE_INACTIVE_BACKGROUND_GRADIENT));
 		
@@ -390,20 +479,6 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		btnt_2.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
 		ListElementDialogHelper.addSelectionListDialogToButton(TipoDialog.FUNCIONARIO, btnSelecionarFuncionarioVistoria, btnt_2, valueVistoria, "funcionario");
 		
-		Label lblArquivo = new Label(cpAddVistoria, SWT.NONE);
-		lblArquivo.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
-		lblArquivo.setText("Arquivo");
-		
-		text_18 = new Text(cpAddVistoria, SWT.BORDER);
-		text_18.setEditable(false);
-		text_18.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
-		
-		Button button_123 = new Button(cpAddVistoria, SWT.NONE);
-		button_123.setImage(ImageRepository.SEARCH_16.getImage());
-		
-		Button btnt_3 = new Button(cpAddVistoria, SWT.NONE);
-		btnt_3.setImage(ImageRepository.REMOVE_16.getImage());
-		
 		Label lblObservaes_1 = new Label(cpAddVistoria, SWT.NONE);
 		lblObservaes_1.setLayoutData(new GridData(SWT.RIGHT, SWT.TOP, false, false, 1, 1));
 		lblObservaes_1.setText("Observações");
@@ -419,13 +494,13 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		createPhotoComposite(tbtmFotos);
 		
 		CTabItem tbtmCheckList = new CTabItem(tabFolder_1, SWT.NONE);
-		tbtmCheckList.setText("Check List");
+		tbtmCheckList.setText("Checklist");
 		
 		Composite composite_2 = new Composite(tabFolder_1, SWT.NONE);
 		tbtmCheckList.setControl(composite_2);
 		tvCheckListVistoria = criarTabelaCheckList(composite_2);
 		
-		createButtonAddItem(composite_8, new SelectionAdapter() {
+		createButtonAddItem(cpVistoria, new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				addVistoria(valueVistoria);
@@ -437,18 +512,18 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		CTabItem tbtmChamada = new CTabItem(tfItens, SWT.NONE);
 		tbtmChamada.setText("Chamados");
 		
-		Composite composite_6 = new Composite(tfItens, SWT.NONE);
-		tbtmChamada.setControl(composite_6);
-		composite_6.setLayout(new GridLayout(1, false));
+		cpChamados = new Composite(tfItens, SWT.NONE);
+		tbtmChamada.setControl(cpChamados);
+		cpChamados.setLayout(new GridLayout(1, false));
 		
-		Composite composite_7 = new Composite(composite_6, SWT.NONE);
+		Composite composite_7 = new Composite(cpChamados, SWT.NONE);
 		composite_7.setLayout(new GridLayout(1, false));
 //		gd_composite_7.heightHint = 95;
 		composite_7.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 		
 		criarTabelaChamadosGerais(composite_7);
 		
-		Composite composite_9 = new Composite(composite_6, SWT.NONE);
+		Composite composite_9 = new Composite(cpChamados, SWT.NONE);
 		composite_9.setLayout(new GridLayout(1, false));
 		composite_9.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 		
@@ -521,85 +596,63 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 			}
 		});
 		
-		CTabItem tbAndamento = new CTabItem(tfChamado, SWT.NONE);
-		tbAndamento.setText("Andamento");
+		CTabItem tbAcontecimento = new CTabItem(tfChamado, SWT.NONE);
+		tbAcontecimento.setText("Acontecimentos");
 		
 		Composite composite_12 = new Composite(tfChamado, SWT.NONE);
-		tbAndamento.setControl(composite_12);
-		composite_12.setLayout(new GridLayout(4, false));
+		tbAcontecimento.setControl(composite_12);
+		composite_12.setLayout(new GridLayout(2, false));
 		
 		Composite composite_14 = new Composite(composite_12, SWT.NONE);
 		composite_14.setLayout(new GridLayout(1, false));
-		composite_14.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 4, 1));
+		composite_14.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 2));
 		
-		criarTabelaAndamentoChamado(composite_14);
+		criarTabelaAcontecimentosChamado(composite_14);
 		
-		Label lblData_4 = new Label(composite_12, SWT.NONE);
-		lblData_4.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
-		lblData_4.setText("Data");
-		
-		DateTimeTextField dateTimeTextField = new DateTimeTextField(composite_12);
-		txtDataAcontecimentoChamado = dateTimeTextField.getControl();
-		txtDataAcontecimentoChamado.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
-		new Label(composite_12, SWT.NONE);
-		new Label(composite_12, SWT.NONE);
-		
-		Label lblFuncionrio_3 = new Label(composite_12, SWT.NONE);
-		lblFuncionrio_3.setText("Funcionário");
-		
-		txtFuncionarioAndamentoReforma = new Text(composite_12, SWT.BORDER);
-		txtFuncionarioAndamentoReforma.setEditable(false);
-		GridData gd_text_27 = new GridData(SWT.FILL, SWT.CENTER, false, false, 1, 1);
-		gd_text_27.widthHint = 133;
-		txtFuncionarioAndamentoReforma.setLayoutData(gd_text_27);
-		
-		Button btnSelecionar_5 = new Button(composite_12, SWT.NONE);
-		btnSelecionar_5.setImage(ImageRepository.SEARCH_16.getImage());
-		ListElementDialogHelper.addSelectionListDialogToButton(TipoDialog.FUNCIONARIO, btnSelecionar_5, valueAcontecimentoChamado, "funcionario");
-		
-		Button btnt_5 = new Button(composite_12, SWT.NONE);
-		btnt_5.setImage(ImageRepository.REMOVE_16.getImage());
-		btnt_5.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
-		ListElementDialogHelper.addSelectionToRemoveButton(btnt_5, valueAcontecimentoChamado, "funcionario", Funcionario.class);
-		
-		Label lblDescrio_1 = new Label(composite_12, SWT.NONE);
-		lblDescrio_1.setLayoutData(new GridData(SWT.RIGHT, SWT.TOP, false, false, 1, 1));
-		lblDescrio_1.setText("Descrição");
-		
-		txtDescricaoAndamentoReforma = new Text(composite_12, SWT.BORDER);
-		txtDescricaoAndamentoReforma.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, false, 3, 1));
-		new Label(composite_12, SWT.NONE);
-		new Label(composite_12, SWT.NONE);
-		new Label(composite_12, SWT.NONE);
-		
-		createButtonAddItem(composite_12, new SelectionAdapter() {
+		Button btnAddAcontecimentoChamado = new Button(composite_12, SWT.NONE);
+		btnAddAcontecimentoChamado.setLayoutData(new GridData(SWT.LEFT, SWT.BOTTOM, false, true, 1, 1));
+		btnAddAcontecimentoChamado.setImage(ImageRepository.ADD_16.getImage());
+		btnAddAcontecimentoChamado.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				addAndamentoChamadoReforma(valueAcontecimentoChamado);
+				AcontecimentoChamadoDialog dialog = new AcontecimentoChamadoDialog();
+				if(dialog.open() == IDialogConstants.OK_ID){
+					((ChamadoReforma) valueChamado.getValue()).getAcontecimentos().add(dialog.getAcontecimentoChamado());
+					tvAcontecimentoChamado.refresh();
+				}
+			}
+		});
+		
+		Button btnRemoverAcontecimentoChamado = new Button(composite_12, SWT.NONE);
+		btnRemoverAcontecimentoChamado.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, true, 1, 1));
+		btnRemoverAcontecimentoChamado.setImage(ImageRepository.REMOVE_16.getImage());
+		btnRemoverAcontecimentoChamado.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				AcontecimentoChamado acc = SelectionHelper.getObject(tvAcontecimentoChamado);
+				((ChamadoReforma) valueChamado.getValue()).getAcontecimentos().remove(acc);
+				tvAcontecimentoChamado.refresh();
 			}
 		});
 		
 		CTabItem tbtmFinalizar = new CTabItem(tfChamado, SWT.NONE);
 		tbtmFinalizar.setText("Fechamento");
 		
-		Composite composite_13 = new Composite(tfChamado, SWT.NONE);
-		tbtmFinalizar.setControl(composite_13);
-		composite_13.setLayout(new GridLayout(4, false));
+		Composite cpFinalizacaoChamadoReforma = new Composite(tfChamado, SWT.NONE);
+		tbtmFinalizar.setControl(cpFinalizacaoChamadoReforma);
+		cpFinalizacaoChamadoReforma.setLayout(new GridLayout(5, false));
 		
-		Label lblData_5 = new Label(composite_13, SWT.NONE);
+		Label lblData_5 = new Label(cpFinalizacaoChamadoReforma, SWT.NONE);
 		lblData_5.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
 		lblData_5.setText("Data");
 		
-		DateTextField dateTextField_4 = new DateTextField(composite_13);
+		DateTextField dateTextField_4 = new DateTextField(cpFinalizacaoChamadoReforma);
 		txtFinalizacaoReforma = dateTextField_4.getControl();
 		GridData gd_text_36 = new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1);
 		gd_text_36.widthHint = 76;
 		txtFinalizacaoReforma.setLayoutData(gd_text_36);
-		new Label(composite_13, SWT.NONE);
-		new Label(composite_13, SWT.NONE);
-		new Label(composite_13, SWT.NONE);
 		
-		radiouGroupStatusReforma = new RadioGroupViewer(composite_13, SWT.NONE);
+		radiouGroupStatusReforma = new RadioGroupViewer(cpFinalizacaoChamadoReforma, SWT.NONE);
 		radiouGroupStatusReforma.setContentProvider(ArrayContentProvider.getInstance());
 		radiouGroupStatusReforma.setLabelProvider(new LabelProvider(){
 			@Override
@@ -611,45 +664,59 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		
 		RadioGroup radioGroup = radiouGroupStatusReforma.getRadioGroup();
 		radioGroup.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
-		new Label(composite_13, SWT.NONE);
-		new Label(composite_13, SWT.NONE);
+		new Label(cpFinalizacaoChamadoReforma, SWT.NONE);
+		new Label(cpFinalizacaoChamadoReforma, SWT.NONE);
 		
-		Label lblFuncionrio_4 = new Label(composite_13, SWT.NONE);
+		Label lblFuncionrio_4 = new Label(cpFinalizacaoChamadoReforma, SWT.NONE);
 		lblFuncionrio_4.setText("Funcionário");
 		
-		txtFuncionarioFinalizacaoReforma = new Text(composite_13, SWT.BORDER);
+		txtFuncionarioFinalizacaoReforma = new Text(cpFinalizacaoChamadoReforma, SWT.BORDER);
 		txtFuncionarioFinalizacaoReforma.setEditable(false);
-		txtFuncionarioFinalizacaoReforma.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		txtFuncionarioFinalizacaoReforma.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 2, 1));
 		
-		Button btnSelecionar_6 = new Button(composite_13, SWT.NONE);
+		Button btnSelecionar_6 = new Button(cpFinalizacaoChamadoReforma, SWT.NONE);
 		btnSelecionar_6.setImage(ImageRepository.SEARCH_16.getImage());
 		ListElementDialogHelper.addSelectionListDialogToButton(TipoDialog.FUNCIONARIO, btnSelecionar_6, valueFinalizacaoChamado, "funcionario");
 		
-		Button btnt_6 = new Button(composite_13, SWT.NONE);
+		Button btnt_6 = new Button(cpFinalizacaoChamadoReforma, SWT.NONE);
 		btnt_6.setImage(ImageRepository.REMOVE_16.getImage());
 		btnt_6.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
 		ListElementDialogHelper.addSelectionToRemoveButton(btnt_6, valueFinalizacaoChamado, "funcionario", Funcionario.class);
 		
-		Label lblDescrio_2 = new Label(composite_13, SWT.NONE);
+		Label lblDescrio_2 = new Label(cpFinalizacaoChamadoReforma, SWT.NONE);
 		lblDescrio_2.setLayoutData(new GridData(SWT.RIGHT, SWT.TOP, false, false, 1, 1));
 		lblDescrio_2.setText("Descrição");
 		
-		txtDescricaoFinalReforma = new Text(composite_13, SWT.BORDER);
-		txtDescricaoFinalReforma.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
-		new Label(composite_13, SWT.NONE);
-		new Label(composite_13, SWT.NONE);
+		txtDescricaoFinalReforma = new Text(cpFinalizacaoChamadoReforma, SWT.BORDER);
+		txtDescricaoFinalReforma.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 2, 1));
+		new Label(cpFinalizacaoChamadoReforma, SWT.NONE);
+		new Label(cpFinalizacaoChamadoReforma, SWT.NONE);
 		
-		Label lblValor_3 = new Label(composite_13, SWT.NONE);
+		Label lblValor_3 = new Label(cpFinalizacaoChamadoReforma, SWT.NONE);
 		lblValor_3.setLayoutData(new GridData(SWT.RIGHT, SWT.TOP, false, false, 1, 1));
 		lblValor_3.setText("Contas");
 		
-		listContasReforma = new org.eclipse.swt.widgets.List(composite_13, SWT.BORDER);
-		listContasReforma.setLayoutData(new GridData(SWT.FILL, SWT.FILL, false, true, 1, 1));
+		tvContasFinalizacaoChamadoReforma = new TableViewer(cpFinalizacaoChamadoReforma, SWT.BORDER | SWT.FULL_SELECTION);
+		tableContasFinalizacaoReforma = tvContasFinalizacaoChamadoReforma.getTable();
+		tableContasFinalizacaoReforma.setLinesVisible(true);
+		tableContasFinalizacaoReforma.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 2, 2));
 		
-		Button btnAdicionar_1 = new Button(composite_13, SWT.NONE);
-		btnAdicionar_1.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false, 1, 1));
-		btnAdicionar_1.setImage(ImageRepository.ADD_16.getImage());
-		btnAdicionar_1.addSelectionListener(new SelectionAdapter() {
+		TableViewerColumn tvcConta = new TableViewerColumn(tvContasFinalizacaoChamadoReforma, SWT.NONE);
+		tvcConta.setLabelProvider(new ColumnLabelProvider(){
+			@Override
+			public String getText(Object element) {
+				ContaPagarReceber conta = (ContaPagarReceber) element;
+				return String.format("Conta a %s no valor de %s, com vencimento em %s - %s", conta.isApagar() ? "pagar" : "receber", 
+						FormatterHelper.getCurrencyFormatter().format(conta.getValor()), FormatterHelper.getSimpleDateFormat().format(conta.getDataVencimento()), conta.getObservacoes());
+			}
+		});
+		TableColumn tableColumn = tvcConta.getColumn();
+		tableColumn.setWidth(550);
+		
+		Button btnAdicionarContaFinalizacaoReforma = new Button(cpFinalizacaoChamadoReforma, SWT.NONE);
+		btnAdicionarContaFinalizacaoReforma.setLayoutData(new GridData(SWT.LEFT, SWT.BOTTOM, false, true, 1, 1));
+		btnAdicionarContaFinalizacaoReforma.setImage(ImageRepository.ADD_16.getImage());
+		btnAdicionarContaFinalizacaoReforma.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				try {
@@ -657,19 +724,40 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 					if(dialog.open() == IDialogConstants.OK_ID){
 						FinalizacaoChamadoReforma fin = (FinalizacaoChamadoReforma) valueFinalizacaoChamado.getValue();
 						fin.getContas().add(dialog.getConta());
-						listContasReforma.redraw();
 					}
+					tvContasFinalizacaoChamadoReforma.refresh();
 				} catch (ParametroNaoInformadoException e1) {
 					DialogHelper.openWarning(e1.getMessage());
 				}
 			}
 		});
-		new Label(composite_13, SWT.NONE);
-		new Label(composite_13, SWT.NONE);
-		new Label(composite_13, SWT.NONE);
-		new Label(composite_13, SWT.NONE);
 		
-		createButtonAddItem(composite_13, new SelectionAdapter() {
+		new Label(cpFinalizacaoChamadoReforma, SWT.NONE);
+		new Label(cpFinalizacaoChamadoReforma, SWT.NONE);
+		
+		Button btnRemoverContaFinalizacaoReforma = new Button(cpFinalizacaoChamadoReforma, SWT.NONE);
+		btnRemoverContaFinalizacaoReforma.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, true, 1, 1));
+		btnRemoverContaFinalizacaoReforma.setImage(ImageRepository.REMOVE_16.getImage());
+		btnRemoverContaFinalizacaoReforma.addSelectionListener(new SelectionAdapter(){
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				ContaPagarReceber c = SelectionHelper.getObject(tvContasFinalizacaoChamadoReforma);
+				
+				if(c == null)
+					return;
+				
+				if(c.isJaPagaRecebida()){
+					DialogHelper.openWarning("A conta já foi paga/recebida, para exclui-la é necessário estorná-la.");
+					return;
+				}
+				
+				FinalizacaoChamadoReforma fin = (FinalizacaoChamadoReforma) valueFinalizacaoChamado.getValue();
+				fin.getContas().remove(c);
+				tvContasFinalizacaoChamadoReforma.refresh();
+			}
+		});
+		
+		createButtonAddItem(cpFinalizacaoChamadoReforma, new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				addFinalizacaoChamado(valueFinalizacaoChamado);
@@ -683,31 +771,11 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		tfItens.setSelection(0);
 		
 		CTabItem tbtmCheckList_1 = new CTabItem(tfItens, SWT.NONE);
-		tbtmCheckList_1.setText("Check List");
+		tbtmCheckList_1.setText("Checklist");
 		
 		Composite composite_3 = new Composite(tfItens, SWT.NONE);
 		tbtmCheckList_1.setControl(composite_3);
 		tvCheckListAluguel = criarTabelaCheckList(composite_3);
-	}
-
-	private void createPhotoComposite(CTabItem tbtmFotos) {
-		PhotoComposite photoComposite = new PhotoComposite(tbtmFotos.getParent(), SWT.NONE, valueVistoria);
-		tbtmFotos.setControl(photoComposite);
-	}
-
-	@Override
-	protected void beforeSetIObservableValue(Aluguel obj) {
-		limparTabelas(obj);
-	}
-	
-	private void limparTabelas(Aluguel obj) {
-		if(tvAndamentoChamado == null)
-			return;
-		
-		tvAndamentoChamado.getTable().removeAll();
-		tvChamadoGeral.getTable().removeAll();
-		tvComissao.getTable().removeAll();
-		tvVistoria.getTable().removeAll();
 	}
 
 	protected void addChamadoReforma(WritableValue value) {
@@ -718,30 +786,79 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		
 		addItens(new ChamadoReformaService(), value, tvChamadoGeral, null);
 		
-		valueAcontecimentoChamado.setValue(new AcontecimentoChamado((ChamadoReforma) valueChamado.getValue()));
 		valueFinalizacaoChamado.setValue(new FinalizacaoChamadoReforma());
+		tvAcontecimentoChamado.refresh();
+	}
+	
+	private void createPhotoComposite(CTabItem tbtmFotos) {
+		photoComposite = new PhotoComposite(tbtmFotos.getParent(), SWT.NONE, valueVistoria);
+		tbtmFotos.setControl(photoComposite);
 	}
 
-	protected void addAndamentoChamadoReforma(WritableValue value){
-		ChamadoReforma chamadoReforma = (ChamadoReforma)valueChamado.getValue();
-		if(chamadoReforma.getId() == null){
-			DialogHelper.openError("O chamado deve ser salvo primeiro antes de ser adicionado novos acontecimentos a ele.");
+	@Override
+	protected void beforeSetIObservableValue(Aluguel obj) {
+		limparTabelas(obj);
+	}
+	
+	private void limparTabelas(Aluguel obj) {
+		if(tvChamadoGeral == null)
 			return;
+		
+		tvChamadoGeral.getTable().removeAll();
+		tvComissao.getTable().removeAll();
+		tvVistoria.getTable().removeAll();
+	}
+	
+	@Override
+	public void saveCurrentObject(GenericService<Aluguel> service) {
+		if(!validarComMensagem(getCurrentObject()))
+			return;
+		
+		try {
+			if (!getCurrentObject().getContrato().getResolvido()) {
+				getCurrentObject().getContrato().setResolvido(true);
+				new ContratoPrestacaoServicoService().salvar(getCurrentObject().getContrato());
+			}
+		} catch (Exception e) {
+			log.error("Erro ao setar resolvido ao contrato de prestação de servico.", e);
 		}
-
-		AcontecimentoChamado acontecimento = (AcontecimentoChamado) valueAcontecimentoChamado.getValue();
-
-		if(validarComMensagem(acontecimento)){
-			ChamadoReforma findOne = new ChamadoReformaService().findOne(chamadoReforma.getId());
-			acontecimento.setChamadoReforma(findOne);
-			addItens(new AcontecimentoChamadoService(), valueAcontecimentoChamado, tvAndamentoChamado, true, findOne);
+		
+		if(getCurrentObject().getId() == null && getCurrentObject().getParcelas().isEmpty()){
+		
+			ContaPagarReceberService contaService = new ContaPagarReceberService();
+			ParametrosEmpresa parametros = ParametrosEmpresa.getInstance();
+			AluguelService aluguelService = (AluguelService) service;
+			
+			if(parametros.getDiaRecebAluguel() != null && parametros.getDiaRepasseAluguel() != null){
+				DateMidnight data = new DateMidnight(getCurrentObject().getDataAssinaturaContrato());
+				DateMidnight dataVencimento = new DateMidnight(getCurrentObject().getDataVencimento());
+				
+				Months monthsBetween = Months.monthsBetween(data, dataVencimento);
+	
+				Calendar c = Calendar.getInstance();
+				c.setTime(getCurrentObject().getDataAssinaturaContrato());
+				c.set(Calendar.MONTH, c.get(Calendar.MONTH) + 1);
+				c.set(Calendar.DAY_OF_MONTH, parametros.getDiaRecebAluguel());
+				
+				getCurrentObject().getParcelas().addAll(contaService.gerarParcelas(monthsBetween.getMonths(), getCurrentObject().getValor(), c.getTime(), ContaPagarReceber.RECEBER, 
+						getCurrentObject().getDataGeracao(), aluguelService.geraObservacoesContaAluguel(getCurrentObject()), parametros.getTipoContaAluguel()));
+	
+				c.set(Calendar.DAY_OF_MONTH, parametros.getDiaRepasseAluguel());
+				
+				getCurrentObject().getParcelas().addAll(contaService.gerarParcelas(monthsBetween.getMonths(), getCurrentObject().getValor(), c.getTime(), ContaPagarReceber.PAGAR, 
+						getCurrentObject().getDataGeracao(), aluguelService.geraObservacoesContaAluguel(getCurrentObject()), parametros.getTipoContaAluguel()));
+				
+				tvParcelas.refresh();
+			}
 		}
+		
+		super.saveCurrentObject(service);
 	}
 
 	protected void addFinalizacaoChamado(WritableValue value){
 		// O Usuario deve salvar primeiro o chamado de reforma para depois finalizar
 		if(((ChamadoReforma)valueChamado.getValue()).getId() == null){
-			DialogHelper.openError("O chamado deve ser salvo primeiro antes de ser finalizado.");
+			DialogHelper.openWarning("O chamado deve ser salvo primeiro antes de ser finalizado.");
 			return;
 		}
 		
@@ -750,7 +867,6 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 			addItens(new ChamadoReformaService(), valueChamado, tvChamadoGeral, null);
 			
 			valueFinalizacaoChamado.setValue(new FinalizacaoChamadoReforma());
-			valueAcontecimentoChamado.setValue(new AcontecimentoChamado((ChamadoReforma) valueChamado.getValue()));
 		}
 	}
 	
@@ -759,14 +875,13 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		valueComissao.setValue(new Comissao(getCurrentObject()));
 		valueChamado.setValue(new ChamadoReforma(getCurrentObject()));
 		valueVistoria.setValue(new Vistoria(getCurrentObject()));
-		valueAcontecimentoChamado.setValue(new AcontecimentoChamado((ChamadoReforma) valueChamado.getValue()));
 		valueFinalizacaoChamado.setValue(new FinalizacaoChamadoReforma());
 	}
 	
 	private void addComissao(WritableValue valueComissao) {
 		ParametrosEmpresa parametrosEmpresa = ParametrosEmpresa.getInstance();
 		if(parametrosEmpresa.getTipoContaComissao() == null){
-			DialogHelper.openWarning("Não foi possivel encontrar o tipo da conta de comissão nos Parâmetros da Empresa");
+			DialogHelper.openWarning("Não foi possivel encontrar o Tipo da Conta de Comissão nos Parâmetros da Empresa");
 		}else{
 			((Comissao)valueComissao.getValue()).setOrigem(parametrosEmpresa.getTipoContaComissao());
 			addItens(new ComissaoService(), valueComissao, tvComissao, getCurrentObject().getComissoes());
@@ -777,14 +892,27 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		addItens(new VistoriaService(), valueVistoria, tvVistoria, getCurrentObject().getVistorias());
 	}
 	
+	private void criarTabelaParcelas(Composite composite){
+		TableViewerBuilder tvbParcela = new TableViewerBuilder(composite);
+		
+		tvbParcela.createColumn("Tipo").bindToProperty("tipoExtenso").build();
+		tvbParcela.createColumn("Valor (R$)").bindToProperty("valor").format(FormatterHelper.getDefaultValueFormatterToMoney()).build();
+		tvbParcela.createColumn("Data de Vencimento").bindToProperty("dataVencimento").setPercentWidth(50).format(new DateStringValueFormatter()).build();
+		
+		tvParcelas = tvbParcela.getTableViewer();
+		
+	}
+	
 	private void criarTabelaComissao(Composite composite){
 		TableViewerBuilder tvbComissao = new TableViewerBuilder(composite);
 		
 		tvbComissao.createColumn("Nome").bindToProperty("comissionado.nome").build();
-		tvbComissao.createColumn("Valor (R$)").bindToProperty("valor").build();
-		tvbComissao.createColumn("Data de Vencimento").bindToProperty("dataVencimento").format(new DateStringValueFormatter()).build();
+		tvbComissao.createColumn("Valor (R$)").bindToProperty("valor").format(FormatterHelper.getDefaultValueFormatterToMoney()).build();
+		tvbComissao.createColumn("Data de Vencimento").bindToProperty("dataVencimento").setPercentWidth(50).format(new DateStringValueFormatter()).build();
 		
 		tvbComissao.setInput(getCurrentObject().getComissoes());
+		
+		WidgetHelper.addMenusToTable(tvbComissao, new ComissaoService(), valueComissao);
 		
 		tvComissao = tvbComissao.getTableViewer();
 	}
@@ -794,8 +922,8 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		
 		tvbChamadoGeral.createColumn("Numero").bindToProperty("id").build();
 		tvbChamadoGeral.createColumn("Data").bindToProperty("data").format(new DateStringValueFormatter()).build();
-		tvbChamadoGeral.createColumn("Problema").bindToProperty("problema").build();
 		tvbChamadoGeral.createColumn("Status").bindToProperty("status").format(new NullStringValueFormatter()).build();
+		tvbChamadoGeral.createColumn("Problema").bindToProperty("problema").setPercentWidth(60).build();
 		
 		tvbChamadoGeral.setInput(getCurrentObject().getChamados());
 		
@@ -807,30 +935,82 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				ChamadoReforma selecionado = (ChamadoReforma) SelectionHelper.getObject(tvbChamadoGeral.getTableViewer());
+				
+				if(selecionado == null)
+					return;
+				
 				valueChamado.setValue(selecionado);
 				valueFinalizacaoChamado.setValue(selecionado.getFinalizacao() != null ? selecionado.getFinalizacao() : new FinalizacaoChamadoReforma());
-				tvbAndamentoChamado.setInput(selecionado.getAcontecimentos());
+			}
+		});
+		
+		WidgetHelper.createMenuItemRemover(menu, new SelectionAdapter() {
+			@SuppressWarnings("unchecked")
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				ChamadoReforma chamadoReforma = SelectionHelper.getObject(tvChamadoGeral);
+				if(chamadoReforma == null)
+					return;
+				if(chamadoReforma.getFinalizacao() != null && chamadoReforma.getFinalizacao().getContas() != null){
+					for(ContaPagarReceber conta : chamadoReforma.getFinalizacao().getContas())
+						if(conta.isJaPagaRecebida()){
+							DialogHelper.openWarning("O chamado possui contas que já foram pagas/recebidas, para excluir é necessário estornar as contas primeiramente.");
+							return;
+						}
+				}
+				
+				if(!DialogHelper.openConfirmation("Deseja excluir o chamado de reforma selecionado ?"))
+					return;
+				
+				try {
+					new ChamadoReformaService().removerAtivarOuDesativar(chamadoReforma);
+					
+					java.util.List<ChamadoReforma> input = (java.util.List<ChamadoReforma>) tvChamadoGeral.getInput();
+					input.remove(chamadoReforma);
+					tvChamadoGeral.refresh();
+					
+					valueChamado.setValue(new ChamadoReforma(getCurrentObject()));
+					valueFinalizacaoChamado.setValue(new FinalizacaoChamadoReforma());
+					
+					DialogHelper.openInformation("Chamado de reforma removido com sucesso.");
+				} catch (Exception e1) {
+					log.error("Erro ao remover chamado de reforma.", e1);
+					DialogHelper.openErrorMultiStatus("Erro ao excluir os chamados de reforma.", e1.getMessage());
+				}
 			}
 		});
 		
 		tvChamadoGeral = tvbChamadoGeral.getTableViewer();
 	}
 	
-	private void criarTabelaAndamentoChamado(Composite composite){
-		tvbAndamentoChamado = new TableViewerBuilder(composite);
+	private void criarTabelaAcontecimentosChamado(Composite composite){
+		tvbAcontecimentoChamado = new TableViewerBuilder(composite);
 		
-		tvbAndamentoChamado.createColumn("Data").bindToProperty("data").format(new DateStringValueFormatter()).build();
-		tvbAndamentoChamado.createColumn("Funcionário").bindToProperty("funcionario.nome").format(new NullStringValueFormatter()).build();
-		tvbAndamentoChamado.createColumn("Descrição").bindToProperty("descricao").build();
+		tvbAcontecimentoChamado.createColumn("Data").bindToProperty("data").format(new TimeStringValueFormatter()).setPercentWidth(20).build();
+		tvbAcontecimentoChamado.createColumn("Funcionário").bindToProperty("funcionario.nome").format(new NullStringValueFormatter()).setPercentWidth(20).build();
+		tvbAcontecimentoChamado.createColumn("Descrição").bindToProperty("descricao").setPercentWidth(60).build();
 		
-		tvAndamentoChamado = tvbAndamentoChamado.getTableViewer();
+		tvAcontecimentoChamado = tvbAcontecimentoChamado.getTableViewer();
+		
+		Table table = tvbAcontecimentoChamado.getTable();
+		Menu menu = new Menu(table);
+		table.setMenu(menu);
+		
+		WidgetHelper.createMenuItemRemover(menu, new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				AcontecimentoChamado acc = (AcontecimentoChamado) SelectionHelper.getObject(tvAcontecimentoChamado);
+				((ChamadoReforma)valueChamado.getValue()).getAcontecimentos().remove(acc);
+				tvAcontecimentoChamado.refresh();
+			}
+		});
 	}
 	
 	private void criarTabelaVistoria(Composite composite){
 		tvbVistoria = new TableViewerBuilder(composite);
 		
 		tvbVistoria.createColumn("Data da Vistoria").bindToProperty("data").format(new DateStringValueFormatter()).build();
-		tvbVistoria.createColumn("Funcionário").bindToProperty("funcionario.nome").build();
+		tvbVistoria.createColumn("Funcionário").setPercentWidth(20).bindToProperty("funcionario.nome").build();
 		tvbVistoria.createColumn("Observações").setPercentWidth(60).bindToProperty("observacoes").build();
 		
 		tvbVistoria.setInput(getCurrentObject().getVistorias());
@@ -854,8 +1034,17 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		tvCheckListAluguel.setContentProvider(new ObservableListContentProvider());
 		tvCheckListAluguel.setInput(PojoProperties.list(VendaAluguel.class, "itensCheckList", ItemCheckList.class).observeDetail(value));
 		//
+		tvParcelas.setContentProvider(new ObservableListContentProvider());
+		tvParcelas.setInput(PojoProperties.list(Aluguel.class, "parcelas", ContaPagarReceber.class).observeDetail(value));
+		//
 		tvCheckListVistoria.setContentProvider(new ObservableListContentProvider());
 		tvCheckListVistoria.setInput(PojoProperties.list(Vistoria.class, "itensCheckList", ItemCheckList.class).observeDetail(valueVistoria));
+		//
+		tvAcontecimentoChamado.setContentProvider(new ObservableListContentProvider());
+		tvAcontecimentoChamado.setInput(PojoProperties.list(ChamadoReforma.class, "acontecimentos", AcontecimentoChamado.class).observeDetail(valueChamado));
+		//
+		tvContasFinalizacaoChamadoReforma.setContentProvider(new ObservableListContentProvider());
+		tvContasFinalizacaoChamadoReforma.setInput(PojoProperties.list(FinalizacaoChamadoReforma.class, "contas", Class.class).observeDetail(valueFinalizacaoChamado));
 		//
 		return bindingContext;
 	}
@@ -903,9 +1092,9 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		IObservableValue valueValorObserveDetailValue = PojoProperties.value(Aluguel.class, "valor", BigDecimal.class).observeDetail(value);
 		bindingContext.bindValue(observeTextText_2ObserveWidget, valueValorObserveDetailValue, UVSHelper.uvsStringToBigDecimal(), UVSHelper.uvsBigDecimalToString());
 		//
-//		IObservableValue observeTextText_5ObserveWidget = WidgetProperties.text(SWT.Modify).observe(text_5);
-//		IObservableValue valueReajusteObserveDetailValue = PojoProperties.value(Aluguel.class, "reajuste", Integer.class).observeDetail(value);
-//		bindingContext.bindValue(observeTextText_5ObserveWidget, valueReajusteObserveDetailValue, null, null);
+		IObservableValue observeSingleSelectionCvAjuste = ViewerProperties.singleSelection().observe(cvAjuste);
+		IObservableValue valueVistoriaReajusteObserveDetailValue = PojoProperties.value(Aluguel.class, "reajuste", Indice.class).observeDetail(value);
+		bindingContext.bindValue(observeSingleSelectionCvAjuste, valueVistoriaReajusteObserveDetailValue, null, null);
 		//
 		IObservableValue observeTextText_DataVencimentobserveWidget = WidgetProperties.text(SWT.Modify).observe(txtDataVencimentoComissao);
 		IObservableValue valueComissaoDataVencimentoObserveDetailValue = PojoProperties.value(Comissao.class, "dataVencimento", Date.class).observeDetail(valueComissao);
@@ -948,18 +1137,6 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		IObservableValue valueProblemaObserveDetailValue = PojoProperties.value(ChamadoReforma.class, "problema", String.class).observeDetail(valueChamado);
 		bindingContext.bindValue(observeTextText_24ObserveWidget, valueProblemaObserveDetailValue, null, null);
 		//
-		IObservableValue observeTextText_10ObserveWidget = WidgetProperties.text(SWT.Modify).observe(txtDataAcontecimentoChamado);
-		IObservableValue valueAcontecimentoChamadoDataObserveDetailValue = PojoProperties.value(AcontecimentoChamado.class, "data", Date.class).observeDetail(valueAcontecimentoChamado);
-		bindingContext.bindValue(observeTextText_10ObserveWidget, valueAcontecimentoChamadoDataObserveDetailValue, UVSHelper.uvsStringToDate(), UVSHelper.uvsDateToString());
-		//
-		IObservableValue observeTextText_27ObserveWidget = WidgetProperties.text(SWT.NONE).observe(txtFuncionarioAndamentoReforma);
-		IObservableValue valueAcontecimentoChamadoFuncionarionomeObserveDetailValue = PojoProperties.value(AcontecimentoChamado.class, "funcionario.nome", String.class).observeDetail(valueAcontecimentoChamado);
-		bindingContext.bindValue(observeTextText_27ObserveWidget, valueAcontecimentoChamadoFuncionarionomeObserveDetailValue, null, null);
-		//
-		IObservableValue observeTextText_28ObserveWidget = WidgetProperties.text(SWT.Modify).observe(txtDescricaoAndamentoReforma);
-		IObservableValue valueAcontecimentoChamadoDescricaoObserveDetailValue = PojoProperties.value(AcontecimentoChamado.class, "descricao", String.class).observeDetail(valueAcontecimentoChamado);
-		bindingContext.bindValue(observeTextText_28ObserveWidget, valueAcontecimentoChamadoDescricaoObserveDetailValue, null, null);
-		//
 		IObservableValue observeTextText_36ObserveWidget = WidgetProperties.text(SWT.Modify).observe(txtFinalizacaoReforma);
 		IObservableValue valueChamadoDataFechamentoObserveDetailValue = PojoProperties.value(FinalizacaoChamadoReforma.class, "data", Date.class).observeDetail(valueFinalizacaoChamado);
 		bindingContext.bindValue(observeTextText_36ObserveWidget, valueChamadoDataFechamentoObserveDetailValue, UVSHelper.uvsStringToDate(), UVSHelper.uvsDateToString());
@@ -976,16 +1153,29 @@ public class AluguelEditor extends GenericEditor<Aluguel>{
 		IObservableValue valueChamadoDescricaoConclusaoObserveDetailValue = PojoProperties.value(FinalizacaoChamadoReforma.class, "descricaoConclusao", String.class).observeDetail(valueFinalizacaoChamado);
 		bindingContext.bindValue(observeTextText_31ObserveWidget, valueChamadoDescricaoConclusaoObserveDetailValue, null, null);
 		//
-		IObservableList itemsListObserveWidget = WidgetProperties.items().observe(listContasReforma);
-		IObservableList valueFinalizacaoChamadoContasObserveDetailList = PojoProperties.list(FinalizacaoChamadoReforma.class, "contas", java.util.List.class).observeDetail(valueFinalizacaoChamado);
-		bindingContext.bindList(itemsListObserveWidget, valueFinalizacaoChamadoContasObserveDetailList, null, null);
-		//
-		IObservableValue observeEnabledTfImovelObserveWidget = WidgetProperties.enabled().observe(tfItens);
-		IObservableValue valuePropostaIdObserveDetailValue = PojoProperties.value(Aluguel.class, "id", Long.class).observeDetail(value);
-		bindingContext.bindValue(observeEnabledTfImovelObserveWidget, valuePropostaIdObserveDetailValue, null, UVSHelper.uvsLongIsNull());
-		//
+		bindEnableControl(bindingContext);
 		initBindTables(bindingContext);
 		//
 		return bindingContext;
 	}
+	
+	private void bindEnableControl(DataBindingContext bindingContext){
+		IObservableValue observeEnabledCpChamadoObserveWidget = WidgetProperties.enabled().observe(cpChamados);
+		IObservableValue valueIdObserveDetailValue = PojoProperties.value(Aluguel.class, "id", Long.class).observeDetail(value);
+		bindingContext.bindValue(observeEnabledCpChamadoObserveWidget, valueIdObserveDetailValue, null, UVSHelper.uvsLongIsNull());
+		//		
+		IObservableValue observeEnabledCpComissaoObserveWidget = WidgetProperties.enabled().observe(cpComissao);
+		bindingContext.bindValue(observeEnabledCpComissaoObserveWidget, valueIdObserveDetailValue, null, UVSHelper.uvsLongIsNull());
+		//
+		IObservableValue observeEnabledCpVistoriaObserveWidget = WidgetProperties.enabled().observe(cpVistoria);
+		bindingContext.bindValue(observeEnabledCpVistoriaObserveWidget, valueIdObserveDetailValue, null, UVSHelper.uvsLongIsNull());
+		//
+		bindingContext.bindValue(WidgetProperties.enabled().observe(photoComposite), PojoProperties.value(Vistoria.class, "id", Long.class).observeDetail(valueVistoria), null, UVSHelper.uvsLongIsNull());
+		//
+		List<Control> controls = Arrays.asList(dtAssinaturaContrato, dtVencimento, btnAddContrato, btnRemoveCliente, btnRemoveContrato, btnRemoveFuncionario, btnRemoverContrato, btnRemoverContrato, btnRemoverFiador, btnSelecFuncionario, btnSelecionarCliente, btnSelecionarContrato, btnSelecionarFiador, txtDataAssinaturaContrato, txtDataVencimento, txtValor, cvAjuste.getControl());
+		for (Control control : controls) {
+			bindingContext.bindValue(WidgetProperties.enabled().observe(control), PojoProperties.value(Aluguel.class, "id", Long.class).observeDetail(value), null, UVSHelper.uvsLongIsNotNull());
+		}
+	}
+	
 }

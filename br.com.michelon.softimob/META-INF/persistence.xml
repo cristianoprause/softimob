@@ -26,10 +26,12 @@
     <class>br.com.michelon.softimob.modelo.Indice</class>
     <class>br.com.michelon.softimob.modelo.IndiceMes</class>
     <class>br.com.michelon.softimob.modelo.ItemCheckList</class>
+    <class>br.com.michelon.softimob.modelo.Item</class>
     <class>br.com.michelon.softimob.modelo.ItemCheckListDescricao</class>
     <class>br.com.michelon.softimob.modelo.LancamentoContabil</class>
     <class>br.com.michelon.softimob.modelo.Log</class>
     <class>br.com.michelon.softimob.modelo.ContratoPrestacaoServico</class>
+    <class>br.com.michelon.softimob.modelo.BoletoSoftimob</class>
     <class>br.com.michelon.softimob.modelo.CheckList</class>
     <class>br.com.michelon.softimob.modelo.ModeloContrato</class>
     <class>br.com.michelon.softimob.modelo.MovimentacaoContabil</class>
@@ -51,7 +53,7 @@
     <class>br.com.michelon.softimob.modelo.Vistoria</class>
     <properties>
       	<property name="javax.persistence.jdbc.driver" value="org.postgresql.Driver" />
-		<property name="javax.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/softimob" />
+		<property name="javax.persistence.jdbc.url" value="jdbc:postgresql://localhost:5433/softimob" />
 		<property name="javax.persistence.jdbc.user" value="postgres" />
 		<property name="javax.persistence.jdbc.password" value="admin" />
 	

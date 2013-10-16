@@ -8,12 +8,14 @@ import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.ManyToOne;
-import javax.persistence.OneToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 import javax.validation.constraints.NotNull;
 
 import org.eclipse.ui.IEditorInput;
+
+import com.google.common.collect.Lists;
 
 import br.com.michelon.softimob.aplicacao.editorInput.AluguelEditorInput;
 import br.com.michelon.softimob.aplicacao.service.AluguelService;
@@ -26,6 +28,12 @@ public class Aluguel extends VendaAluguel implements Pendencia, Serializable{
 
 	private static final long serialVersionUID = 1L;
 
+	public Aluguel() {
+//		ParametrosEmpresa params = ParametrosEmpresa.getInstance();
+//		if(params != null)
+//			setModeloContrato(params.getContratoAluguel());
+	}
+	
 	@ManyToOne
 	private Cliente fiador;
 	
@@ -33,8 +41,8 @@ public class Aluguel extends VendaAluguel implements Pendencia, Serializable{
 	@Temporal(TemporalType.DATE)
 	private Date dataVencimento = new Date();
 	
-	@Column
-	private Integer reajuste;
+	@ManyToOne
+	private Indice reajuste;
 	
 	@Column(nullable = false)
 	private Boolean resolvido = false;
@@ -42,19 +50,11 @@ public class Aluguel extends VendaAluguel implements Pendencia, Serializable{
 	@Temporal(TemporalType.DATE)
 	private Date dataFechamento = null;
 	
-	@OneToOne(cascade=CascadeType.ALL)
-	@br.com.michelon.softimob.aplicacao.annotation.Log
-	private Log log;
+	@OneToMany(cascade=CascadeType.ALL, orphanRemoval = true)
+	private List<ContaPagarReceber> parcelas = Lists.newArrayList();
 	
-	public Aluguel(){
-	}
-	
-	public Log getLog() {
-		return log;
-	}
-	
-	public void setLog(Log log) {
-		this.log = log;
+	public List<ContaPagarReceber> getParcelas() {
+		return parcelas;
 	}
 	
 	public Cliente getFiador() {
@@ -65,11 +65,11 @@ public class Aluguel extends VendaAluguel implements Pendencia, Serializable{
 		this.fiador = fiador;
 	}
 
-	public Integer getReajuste() {
+	public Indice getReajuste() {
 		return reajuste;
 	}
 
-	public void setReajuste(Integer reajuste) {
+	public void setReajuste(Indice reajuste) {
 		this.reajuste = reajuste;
 	}
 
@@ -125,6 +125,11 @@ public class Aluguel extends VendaAluguel implements Pendencia, Serializable{
 	}
 
 	@Override
+	public boolean confirmarFinalizarPendencia() {
+		return true;
+	}
+	
+	@Override
 	public IEditorInput getEditorInput() {
 		AluguelEditorInput aluguelEditorInput = new AluguelEditorInput();
 		aluguelEditorInput.setModelo(this);
@@ -133,8 +138,7 @@ public class Aluguel extends VendaAluguel implements Pendencia, Serializable{
 
 	@Override
 	public void finalizarPendencia() throws Exception {
-		setResolvido(true);
-		((AluguelService)getService()).salvar(this);
+		((AluguelService)getService()).finalizarPendencia(this);
 	}
 
 }

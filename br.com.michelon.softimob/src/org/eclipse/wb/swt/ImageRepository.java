@@ -42,7 +42,8 @@ public enum ImageRepository{
 	REFRESH_16("icons/refresh/refresh16.png"),
 	REMOVE_16("icons/delete/remove16.png"), 
 	REMOVE_32("icons/delete/delete32.png"), 
-	ALUGUEL_32("icons/aluguel/aluguel32.png"), 
+	LOCACAO_32("icons/aluguel/aluguel32.png"), 
+	LOCACAO_16("icons/aluguel/aluguel16.png"), 
 	CONTA_32("icons/contaPagar/contaPagar32.png"), 
 	MOVIMENTACAO_CONTABIL_32("icons/movimentacao/movimentacao32.png"),
 	CONTRATO_16("icons/contrato/contrato16.png"),
@@ -82,7 +83,12 @@ public enum ImageRepository{
 	SUCCESS_16("icons/typeMessage/success16.png"),
 	SUCCESS_32("icons/typeMessage/success32.png"), 
 	USER_32("icons/user/user32.png"),
-	USER_16("icons/user/user16.png")
+	USER_16("icons/user/user16.png"),
+	SOLVED_16("icons/solved/solved16.png"),
+	FOTO_16("icons/foto/foto16.png"),
+	MAP_16("icons/map/map16.png"),
+	DESEMPENHO_16("icons/desempenho/desempenho16.png"),
+	IMPORTACAO_ARQUIVORETORNO("icons/importacao/import16.png")
 	;
 	
 	private String caminho;

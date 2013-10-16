@@ -18,6 +18,7 @@ import br.com.michelon.softimob.aplicacao.helper.SelectionHelper;
 import br.com.michelon.softimob.aplicacao.service.TipoComodoService;
 import br.com.michelon.softimob.modelo.Comodo;
 import br.com.michelon.softimob.modelo.TipoComodo;
+import br.com.michelon.softimob.tela.widget.NumberTextField;
 
 public class ComodoDialog extends TitleAreaDialog{
 	public ComodoDialog(Shell shell) {
@@ -28,13 +29,15 @@ public class ComodoDialog extends TitleAreaDialog{
 	
 	private Comodo comodo;
 	private ComboViewer comboViewer;
+	private Text txtQuantidade;
 	
 	@Override
 	protected Control createDialogArea(Composite parent) {
 		setMessage("Informe as descrições do cômodo.");
 		setTitle("Seleção de cômodo");
 		
-		Composite composite = new Composite(parent, SWT.NONE);
+		Composite area = (Composite) super.createDialogArea(parent);
+		Composite composite = new Composite(area, SWT.NONE);
 		composite.setLayout(new GridLayout(2, false));
 		composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 		
@@ -46,7 +49,15 @@ public class ComodoDialog extends TitleAreaDialog{
 		Combo combo = comboViewer.getCombo();
 		combo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 		comboViewer.setContentProvider(ArrayContentProvider.getInstance());
-		comboViewer.setInput(new TipoComodoService().findAtivos());
+		comboViewer.setInput(new TipoComodoService().findAtivados());
+		
+		Label lblQuantidade = new Label(composite, SWT.NONE);
+		lblQuantidade.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
+		lblQuantidade.setText("Quantidade");
+		
+		NumberTextField numberTextField = new NumberTextField(composite);
+		txtQuantidade = numberTextField.getControl();
+		txtQuantidade.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 		
 		Label lblDescricao = new Label(composite, SWT.NONE);
 		lblDescricao.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
@@ -55,7 +66,7 @@ public class ComodoDialog extends TitleAreaDialog{
 		text_2 = new Text(composite, SWT.BORDER);
 		text_2.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 		
-		return composite;
+		return area;
 	}
 
 	@Override
@@ -69,9 +80,19 @@ public class ComodoDialog extends TitleAreaDialog{
 		
 		comodo = new Comodo(null);
 		comodo.setDescricao(text_2.getText());
+		
+		if(!txtQuantidade.getText().isEmpty())
+			comodo.setQuantidade(new Integer(txtQuantidade.getText()));
+		
 		comodo.setTipoComodo(tipo);
 		
 		super.okPressed();
+	}
+	
+	@Override
+	protected void configureShell(Shell newShell) {
+		newShell.setText("Softimob");
+		super.configureShell(newShell);
 	}
 	
 	@Override

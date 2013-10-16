@@ -12,6 +12,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.OneToMany;
+import javax.persistence.OneToOne;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 import javax.validation.constraints.NotNull;
@@ -34,14 +35,26 @@ public class MovimentacaoContabil implements Serializable{
 	private BigDecimal valor;
 	
 	@NotEmpty(message = "A movimentação deve conter lançamentos.")
-	@OneToMany(cascade=CascadeType.ALL, mappedBy = "movimentacao")
+	@OneToMany(cascade=CascadeType.ALL, orphanRemoval = true)
 	private List<LancamentoContabil> lancamentos = Lists.newArrayList();
 
 	@NotNull(message = "A data da movimentação não pode ser vazia.")
-	@Temporal(TemporalType.TIMESTAMP)
+	@Temporal(TemporalType.DATE)
 	@Column(nullable = false)
-	private Date data;
+	private Date data = new Date();
 
+	@OneToOne(cascade=CascadeType.ALL, orphanRemoval = true)
+	@br.com.michelon.softimob.aplicacao.annotation.Log
+	private Log log = new Log();
+	
+	public Log getLog() {
+		return log;
+	}
+	
+	public void setLog(Log log) {
+		this.log = log;
+	}
+	
 	public Long getId() {
 		return id;
 	}

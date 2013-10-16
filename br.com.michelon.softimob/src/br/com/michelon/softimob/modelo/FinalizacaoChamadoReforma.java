@@ -4,13 +4,14 @@ import java.io.Serializable;
 import java.util.Date;
 import java.util.List;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.ManyToOne;
-import javax.persistence.OneToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
 import javax.validation.constraints.NotNull;
@@ -28,9 +29,9 @@ public class FinalizacaoChamadoReforma implements Serializable{
 	private Long id;
 	
 	@NotNull(message = "Data de fechamento do chamado de reforma não pode ser vazia.")
-	@Temporal(TemporalType.TIMESTAMP)
+	@Temporal(TemporalType.DATE)
 	@Column(nullable = false)
-	private Date data;
+	private Date data = new Date();
 	
 	@ManyToOne
 	private Funcionario funcionario;
@@ -39,7 +40,7 @@ public class FinalizacaoChamadoReforma implements Serializable{
 	@Column(nullable = false)
 	private String descricaoConclusao;
 
-	@OneToOne
+	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<ContaPagarReceber> contas = Lists.newArrayList();
 
 	@NotNull(message = "Informe se o chamado foi aceito ou recusado.")

@@ -7,7 +7,9 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.ManyToOne;
 
+import org.eclipse.persistence.annotations.Index;
 import org.hibernate.validator.constraints.NotEmpty;
 
 import br.com.michelon.softimob.aplicacao.annotation.DeactivateOnDelete;
@@ -21,6 +23,7 @@ public class Usuario implements Serializable{
 	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Long id;
 
+	@Index
 	@Column(nullable = false)
 	@NotEmpty(message="O usuário deve ter no minimo 1 caractér.")
 	private String login;
@@ -35,6 +38,9 @@ public class Usuario implements Serializable{
 	@Column(nullable = false)
 	@DeactivateOnDelete
 	private Boolean ativo = true;
+	
+	@ManyToOne(optional = true)
+	private Funcionario funcionario;
 	
 	public Long getId() {
 		return id;
@@ -74,6 +80,23 @@ public class Usuario implements Serializable{
 	
 	public void setAtivo(Boolean ativo) {
 		this.ativo = ativo;
+	}
+
+	public Funcionario getFuncionario() {
+		return funcionario;
+	}
+	
+	public void setFuncionario(Funcionario funcionario) {
+		this.funcionario = funcionario;
+	}
+	
+	public String getNomeOrLogin(){
+		return getFuncionario() == null ? getLogin() : getFuncionario().getNome();
+	}
+	
+	@Override
+	public String toString() {
+		return getNomeOrLogin();
 	}
 	
 	@Override

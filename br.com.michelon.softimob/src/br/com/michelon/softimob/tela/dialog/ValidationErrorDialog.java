@@ -13,20 +13,27 @@ import org.eclipse.swt.widgets.Shell;
 
 public class ValidationErrorDialog extends TitleAreaDialog {
 	private final String erros;
+	private final String acao;
 
 	public ValidationErrorDialog(Shell parentShell, String erros) {
+		this(parentShell, erros, "salvar o registro");
+	}
+	
+	public ValidationErrorDialog(Shell parentShell, String erros, String acao) {
 		super(parentShell);
 		this.erros = erros;
+		this.acao = acao;
 	}
 
 	@Override
 	protected Control createDialogArea(Composite parent) {
-		setTitle("Erro ao salvar registro");
-		setMessage("Os seguintes erros foram encontrados ao salvar o registro.");
+		setTitle("Erro ao " + acao);
+		setMessage("Os seguintes erros foram encontrados ao " + acao + ".");
 
-		Composite composite = new Composite(parent, SWT.NONE);
-		composite.setLayout(new GridLayout(1, false));
-		composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+		Composite area = (Composite) super.createDialogArea(parent);
+		Composite composite = new Composite(area, SWT.NONE);
+		composite.setLayout(new GridLayout(2, false));
+		composite.setLayoutData(new GridData(GridData.FILL_BOTH));
 		
 		StyledText txtErros = new StyledText(composite, SWT.BORDER);
 		txtErros.setEditable(false);
@@ -34,7 +41,7 @@ public class ValidationErrorDialog extends TitleAreaDialog {
 
 		txtErros.setText(erros);
 		
-		return composite;
+		return area;
 	}
 
 	@Override
@@ -42,6 +49,12 @@ public class ValidationErrorDialog extends TitleAreaDialog {
 		createButton(parent, IDialogConstants.OK_ID, IDialogConstants.OK_LABEL, true);
 	}
 
+	@Override
+	protected void configureShell(Shell newShell) {
+		newShell.setText("Softimob");
+		super.configureShell(newShell);
+	}
+	
 	@Override
 	protected Point getInitialSize() {
 		return new Point(421, 253);

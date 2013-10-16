@@ -7,7 +7,6 @@ import java.util.List;
 import javax.xml.bind.JAXBElement;
 
 import org.apache.commons.lang3.StringUtils;
-import org.apache.log4j.Logger;
 import org.docx4j.openpackaging.packages.WordprocessingMLPackage;
 import org.docx4j.wml.Text;
 
@@ -20,26 +19,20 @@ import com.google.common.collect.Lists;
 public class DocxHelper {
 
 	private final String XPATH_TO_SELECT_TEXT_NODES = "//w:t";
-	private Logger log = Logger.getLogger(getClass());
 	
-	public void createPartControl(File file, Object object) {
+	public void gerarContrato(File file, Object object) throws Exception{
+		// Abre o arquivo
+		WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.load(file);
 
-		try {
-			// Abre o arquivo
-			WordprocessingMLPackage wordMLPackage = WordprocessingMLPackage.load(file);
+		// Pega todas as linhas do arquivo e joga em uma lista
+		List<Object> texts = wordMLPackage.getMainDocumentPart().getJAXBNodesViaXPath(XPATH_TO_SELECT_TEXT_NODES, true);
 
-			// Pega todas as linhas do arquivo e joga em uma lista
-			List<Object> texts = wordMLPackage.getMainDocumentPart().getJAXBNodesViaXPath(XPATH_TO_SELECT_TEXT_NODES, true);
+		organizarTexts(texts);
+		
+		List<TagDocx> tags = Arrays.asList(new PTagDocx(), new ETagDocx());
+		substituir(tags, texts, object);
 
-			organizarTexts(texts);
-			
-			List<TagDocx> tags = Arrays.asList(new PTagDocx(), new ETagDocx());
-			substituir(tags, texts, object);
-
-			wordMLPackage.save(file);
-		} catch (Exception e) {
-			log.error("Erro ao alterar documento .docx .", e);
-		}
+		wordMLPackage.save(file);
 	}
 
 	private void organizarTexts(List<Object> texts) {
@@ -67,7 +60,7 @@ public class DocxHelper {
 		}
 	}
 
-	private void substituir(List<TagDocx> tagType, List<Object> texts, Object object){
+	private void substituir(List<TagDocx> tagType, List<Object> texts, Object object) throws Exception{
 		
 		for (TagDocx tag : tagType) {
 			
@@ -88,14 +81,18 @@ public class DocxHelper {
 						i++;
 						if(texts.size() != i)
 							text = (Text) ((JAXBElement<?>) texts.get(i)).getValue();
+						// Se tiver </ ex: "<a>nome<". Se </ tiver um tipo invalido a tag que foi aberta ex: "<a></b>" e se não for o ultimo caractere ex: "<a>nome</"
+						if(coringa.contains("</") && !coringa.contains("</" + tag.getTagWord()) && coringa.lastIndexOf("</") != coringa.length() - 2)
+							throw new Exception("As tags do contrato não fecham corretamente.");
 						
 					}while(!coringa.contains("</"+tag.getTagWord()+">"));
 					i--;
 					
-					String afterTag = coringa.substring(coringa.indexOf("</"+tag.getTagWord()+">") + 3, coringa.length()-1);
+					String afterTag = coringa.substring(coringa.indexOf("</"+tag.getTagWord()+">") + 4, coringa.length());
 					
 					coringa = coringa.substring(coringa.indexOf("<"+tag.getTagWord()+">") + 3, coringa.indexOf("</"+tag.getTagWord()+">"));
 					coringa = coringa.trim();
+					coringa = FormatterHelper.removerAcentos(coringa);
 					
 					for(Text cText : cleanList){
 						cText.setValue("");
@@ -108,7 +105,11 @@ public class DocxHelper {
 						txtFormat = "Parâmetro não encontrado";
 					}
 					
+					if(txtFormat == null)
+						txtFormat = StringUtils.EMPTY;
+					
 					cleanList.get(0).setValue(beforeTag.concat(txtFormat).concat(afterTag));
+					i = 0;
 				}
 			}
 		}

@@ -40,7 +40,7 @@ public class VistoriaView extends GenericView<Vistoria>{
 		atributos = Lists.newArrayList();
 		
 		atributos.add(new ColumnProperties("Data", "data", 10, new DateStringValueFormatter()));
-		atributos.add(new ColumnProperties("Funcionario", "funcionario.nome", 20));
+		atributos.add(new ColumnProperties("Funcionário", "funcionario.nome", 20));
 		atributos.add(new ColumnProperties("Venda ou Locação", "vendaAluguel", 60));
 		atributos.add(new ColumnProperties("Observações", "observacoes", 60));		
 	}
@@ -109,7 +109,7 @@ public class VistoriaView extends GenericView<Vistoria>{
 					FileHelper.openFile(FileHelper.criarDiretorioArquivos(arquivos), arquivos.get(0).getNome());
 				} catch (IOException e2) {
 					log.error("Erro ao abrir fotos.", e2);
-					DialogHelper.openError("Erro ao abrir as fotos da vistoria.\n" + e2.getMessage());
+					DialogHelper.openErrorMultiStatus("Erro ao abrir as fotos da vistoria.\n", e2.getMessage());
 				}
 			}
 		});

@@ -42,6 +42,7 @@ import org.eclipse.wb.swt.ImageRepository;
 import org.eclipse.wb.swt.SWTResourceManager;
 
 import br.com.michelon.softimob.aplicacao.editorInput.GenericEditorInput;
+import br.com.michelon.softimob.aplicacao.exception.ViolacaoForeignKey;
 import br.com.michelon.softimob.aplicacao.filter.AtivadoDesativadoFilter;
 import br.com.michelon.softimob.aplicacao.filter.AtivadoDesativadoFilter.AtivadoDesativado;
 import br.com.michelon.softimob.aplicacao.filter.GenericFilter;
@@ -59,7 +60,7 @@ import com.google.common.collect.Lists;
 
 public abstract class GenericView<T> extends ViewPart{
 	
-	private final FormToolkit formToolkit = new FormToolkit(Display.getDefault());
+	protected final FormToolkit formToolkit = new FormToolkit(Display.getDefault());
 	
 	protected Logger log = Logger.getLogger(getClass());
 	
@@ -72,13 +73,20 @@ public abstract class GenericView<T> extends ViewPart{
 	private GenericFilter filter;
 	
 	private boolean addGroupAtivadoDesativado;
+	private Class<? extends T> mainClass;
 
 	private AtivadoDesativadoFilter ativadoDesativadoFilter;
 	private RadioGroup radioGroup;
 	private RadioGroupViewer radioGroupViewer;
 
+	@SuppressWarnings("unchecked")
 	public GenericView(boolean addGroupAtivadoDesativado) {
+		this(addGroupAtivadoDesativado, (Class<? extends T>) Object.class);
+	}
+	
+	public GenericView(boolean addGroupAtivadoDesativado, Class<? extends T> mainClass) {
 		this.addGroupAtivadoDesativado = addGroupAtivadoDesativado;
+		this.mainClass = mainClass;
 	}
 	
 	/** 
@@ -136,12 +144,9 @@ public abstract class GenericView<T> extends ViewPart{
 		cpBody.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 3, 1));
 		formToolkit.paintBordersFor(cpBody);
 		
-		viewer = criarTabela(cpBody);
+		viewer = createTable(cpBody);
 		
 		createComponentsCpBotton(frmNewForm.getBody(), formToolkit);
-		
-		new Label(frmNewForm.getBody(), SWT.NONE);
-		new Label(frmNewForm.getBody(), SWT.NONE);
 		
 		if(addGroupAtivadoDesativado){
 			ativadoDesativadoFilter = new AtivadoDesativadoFilter();
@@ -160,7 +165,9 @@ public abstract class GenericView<T> extends ViewPart{
 		if(viewer instanceof TableViewer)
 			viewer.setContentProvider(ArrayContentProvider.getInstance());
 		
-		viewer.addFilter(getFilter());
+		// PARA ABRIR NO WINDOW BUILDER :D
+		if(viewer != null && getFilter() != null)
+			viewer.addFilter(getFilter());
 		
 		IDoubleClickListener doubleClickListener = getDoubleClickListener();
 		if(doubleClickListener != null)
@@ -188,7 +195,7 @@ public abstract class GenericView<T> extends ViewPart{
 			
 			@Override
 			public void selectionChanged(SelectionChangedEvent event) {
-				AtivadoDesativado selecao = SelectionHelper.getObject(radioGroupViewer);
+				AtivadoDesativado selecao = (AtivadoDesativado) SelectionHelper.getObject(event.getSelection());
 				if(selecao != null)
 					ativadoDesativadoFilter.setEstado(selecao);
 				
@@ -225,7 +232,7 @@ public abstract class GenericView<T> extends ViewPart{
 		formToolkit.adapt(txtFiltro, true, true);
 	}
 
-	protected ColumnViewer criarTabela(Composite composite) {
+	protected ColumnViewer createTable(Composite composite) {
 		return WidgetHelper.createTable(composite, getColumns()).getTableViewer();
 	}
 
@@ -272,7 +279,8 @@ public abstract class GenericView<T> extends ViewPart{
 				if(selecionado == null)
 					return;
 				
-				excluirDesativarAtivar(selecionado);
+				if(DialogHelper.openConfirmation("Deseja remover o registro selecionado ?"))
+					excluirDesativarAtivar(selecionado);
 				
 				atualizar(getInput());
 			}
@@ -286,8 +294,10 @@ public abstract class GenericView<T> extends ViewPart{
 	 * @return Filter
 	 */
 	protected GenericFilter getFilter(){
-		if(filter == null){
-			filter = new PropertyFilter(getAttributes());
+		ArrayList<String> attributes = getAttributes();
+		
+		if(filter == null && !attributes.isEmpty()){
+			filter = new PropertyFilter(getAttributes().toArray(), mainClass);
 		}
 		
 		return filter;
@@ -327,8 +337,10 @@ public abstract class GenericView<T> extends ViewPart{
 			getService(objeto).removerAtivarOuDesativar(objeto);
 			
 			DialogHelper.openInformation((String.format("Registro %s com sucesso.", addGroupAtivadoDesativado ? "desativado/ativado" : "removido")));
+		} catch (ViolacaoForeignKey e) {
+			DialogHelper.openWarning(e.getMessage());
 		} catch (Exception e) {
-			DialogHelper.openError("Houveram erros ao remover registro.");
+			DialogHelper.openErrorMultiStatus("Houveram erros ao remover registro.", e.getMessage());
 			log.error("Erro ao remover registro.", e);
 		}
 	}
@@ -373,9 +385,6 @@ public abstract class GenericView<T> extends ViewPart{
 			@Override
 			public void doubleClick(DoubleClickEvent event) {
 				T t = getSelecionado();
-				if(t == null)
-					return ;
-				
 				alterar(t);
 			}
 		};
@@ -399,6 +408,10 @@ public abstract class GenericView<T> extends ViewPart{
 
 	protected void alterar(T element) {
 		try {
+			
+			if(element == null || !(mainClass.isInstance(element)))
+				return ;
+			
 			refresh(element);
 			IWorkbenchPage activePage = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
 			GenericEditorInput<?> editorInputWithModel = getEditorInputWithModel(element);
@@ -444,6 +457,9 @@ public abstract class GenericView<T> extends ViewPart{
 	
 	public void createComponentsCpTop(Composite parent, FormToolkit formToolkit2) {}
 	
-	public void createComponentsCpBotton(Composite parent, FormToolkit formToolkit2){}
+	public void createComponentsCpBotton(Composite parent, FormToolkit formToolkit2){
+		new Label(parent, SWT.NONE);
+		new Label(parent, SWT.NONE);
+	}
 	
 }

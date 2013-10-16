@@ -1,6 +1,7 @@
 package br.com.michelon.softimob.modelo;
 
 import java.io.Serializable;
+import java.util.Date;
 import java.util.List;
 
 import javax.persistence.CascadeType;
@@ -24,6 +25,7 @@ import br.com.michelon.softimob.aplicacao.service.FeedbackService;
 import br.com.michelon.softimob.aplicacao.service.ImovelService;
 import br.com.michelon.softimob.aplicacao.service.PropostaService;
 import br.com.michelon.softimob.aplicacao.service.ReservaService;
+import br.com.michelon.softimob.modelo.ContratoPrestacaoServico.TipoContrato;
 
 import com.google.common.collect.Lists;
 
@@ -62,9 +64,9 @@ public class Imovel implements Serializable, ContainsPhotos{
 	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
 	private List<Arquivo> fotos = Lists.newArrayList();
 
-	@OneToOne(cascade=CascadeType.ALL)
+	@OneToOne(cascade=CascadeType.ALL, orphanRemoval = true)
 	@br.com.michelon.softimob.aplicacao.annotation.Log
-	private Log log;
+	private Log log = new Log();
 	
 	public List<ContratoPrestacaoServico> getContratos() {
 		return new ContratoPrestacaoServicoService().findByImovel(this);
@@ -169,6 +171,19 @@ public class Imovel implements Serializable, ContainsPhotos{
 	public void setLog(Log log) {
 		this.log = log;
 	}
+
+	public TipoContrato getEstadoDeContrato(){
+		List<ContratoPrestacaoServico> contratos = getContratos();
+		Date dataHoje = new Date();
+		
+		for(ContratoPrestacaoServico c : contratos){
+			if(c.getDataInicio().compareTo(dataHoje) <= 0 && c.getDataVencimento().compareTo(dataHoje)>=0){
+				return c.getTipo();
+			}
+		}
+		
+		return null;
+	}
 	
 	private transient static ImovelService service;
 	
@@ -179,9 +194,13 @@ public class Imovel implements Serializable, ContainsPhotos{
 		return service.sizeImages(this);
 	}
 	
+	public String getDescricao() {
+		return String.format("%s, código %s localizado em %s.", getTipo().getNome(), getId(), getEndereco().toString());
+	}
+	
 	@Override
 	public String toString() {
-		return this.id + " - " + this.endereco.toString() ;
+		return getDescricao();
 	}
 	
 	@Override

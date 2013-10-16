@@ -9,6 +9,9 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.ManyToOne;
+import javax.validation.constraints.NotNull;
+
+import org.apache.commons.lang3.StringUtils;
 
 @Entity
 public class LancamentoContabil implements Serializable{
@@ -18,32 +21,23 @@ public class LancamentoContabil implements Serializable{
 	@Id @GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Long id;
 	
-	@Column
+	@NotNull(message = "Informe se o lançamento é a crédito ou débito")
+	@Column(nullable = false)
 	private TipoLancamento tipo;
 	
 	@Column
-	private String historico;
+	private String historico = StringUtils.EMPTY;
 	
 	@Column
-	private String complemento;
+	private String complemento = StringUtils.EMPTY;
 	
-	@Column(scale=2, length=14)
+	@NotNull(message = "Informe o valor do lançamento")
+	@Column(scale=2, length=14, nullable = false)
 	private BigDecimal valor;
 	
-	@ManyToOne
-	private PlanoConta conta;
-	
+	@NotNull(message = "Informe a conta referente do lançamento")
 	@ManyToOne(optional = false)
-	private final MovimentacaoContabil movimentacao;
-
-	public LancamentoContabil(MovimentacaoContabil movimentacao){
-		this.movimentacao = movimentacao;
-	}
-	
-	@SuppressWarnings("unused")
-	private LancamentoContabil(){
-		this(null);
-	}
+	private PlanoConta conta;
 	
 	public Long getId() {
 		return id;
@@ -93,10 +87,6 @@ public class LancamentoContabil implements Serializable{
 		this.tipo = tipo;
 	}
 	
-	public MovimentacaoContabil getMovimentacao() {
-		return movimentacao;
-	}
-	
 	public boolean isDebito(){
 		return TipoLancamento.DEBITO.equals(tipo);
 	}
@@ -114,7 +104,7 @@ public class LancamentoContabil implements Serializable{
 	}
 	
 	public static LancamentoContabil create(MovimentacaoContabil mov, TipoLancamento tipo, PlanoConta conta, BigDecimal valor, String historico, String complemento) {
-		LancamentoContabil lcto = new LancamentoContabil(mov);
+		LancamentoContabil lcto = new LancamentoContabil();
 		
 		lcto.setTipo(tipo);
 		lcto.setComplemento(complemento);
@@ -157,13 +147,17 @@ public class LancamentoContabil implements Serializable{
 
 	@Override
 	public boolean equals(Object obj) {
-		if (this == obj)
-			return true;
 		if (obj == null)
 			return false;
 		if (getClass() != obj.getClass())
 			return false;
+		if (this == obj)
+			return true;
 		LancamentoContabil other = (LancamentoContabil) obj;
+		
+		if(id == null && other.id == null)
+			return tipo != null && tipo.equals(other.tipo) && valor != null && valor.equals(other.valor) && conta != null && conta.equals(other.conta);
+		
 		if (id == null) {
 			if (other.id != null)
 				return false;

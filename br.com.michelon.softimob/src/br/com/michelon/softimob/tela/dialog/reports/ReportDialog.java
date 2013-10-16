@@ -8,59 +8,72 @@ import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
-import org.eclipse.ui.PartInitException;
-import org.eclipse.ui.PlatformUI;
+import org.eclipse.swt.widgets.Shell;
 
+import br.com.michelon.softimob.aplicacao.exception.ParametroNaoInformadoException;
+import br.com.michelon.softimob.aplicacao.helper.ReportHelper;
 import br.com.michelon.softimob.aplicacao.helper.ShellHelper;
-import br.com.michelon.softimob.aplicacao.reports.ReportGen;
-import br.com.michelon.softimob.tela.view.ReportView;
+import br.com.michelon.softimob.aplicacao.listener.OnNenhumRegistroEncontrado;
+import br.com.michelon.softimob.aplicacao.listener.OnSuccessfulListener;
 
-public abstract class ReportDialog extends TitleAreaDialog{
+public abstract class ReportDialog extends TitleAreaDialog {
 
-	public ReportDialog() {
-		super(ShellHelper.getActiveShell());
+	protected JasperPrint jprint;
+
+	public ReportDialog(){
+		this(ShellHelper.getActiveShell());
+	}
+	
+	public ReportDialog(Shell shell) {
+		super(shell);
 		setShellStyle(SWT.MIN);
 	}
 
 	@Override
-	protected Control createDialogArea(Composite parent){
+	protected Control createDialogArea(Composite parent) {
 		Composite area = (Composite) super.createDialogArea(parent);
-		
+
 		criarComponentes(area);
-		
-		setTitle(getTitle());
+
+		setTitle(getTitleDialog());
 		setMessage(getMessage());
-		
+
 		return area;
 	}
-	
+
 	protected abstract void criarComponentes(Composite area);
-	
-	protected abstract Map<String, Object> getParametros();
-	
+
+	protected abstract Map<String, Object> getParametros() throws ParametroNaoInformadoException;
+
 	protected abstract String getCaminhoRelatorio();
-	
+
 	public abstract String getMessage();
-	
-	protected abstract String getTitle();
-	
+
+	protected abstract String getTitleDialog();
+
 	@Override
 	protected void okPressed() {
-		JasperPrint jprint = ReportGen.generateReport(getParametros(), getCaminhoRelatorio());
-		
-		try {
-			if(!jprint.getPages().isEmpty()){
-				ReportView showView = (ReportView) PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().showView(ReportView.ID);
-				showView.getReportViewer().setDocument(jprint);
-			} else { 
-				setErrorMessage("Nenhum registro encontrado.");
-				return;
-			}
-		} catch (PartInitException e) {
-			e.printStackTrace();
+		try{
+			ReportHelper.gerarRelatorio(getParametros(), getCaminhoRelatorio(), new OnNenhumRegistroEncontrado() {
+				@Override
+				public void onError(String message) {
+					setErrorMessage(message);
+				}
+			}, new OnSuccessfulListener() {
+				@Override
+				public void onSucessful(String message) {
+					setErrorMessage(null);
+				}
+			});
+		}catch(ParametroNaoInformadoException pe){
+			setErrorMessage(pe.getMessage() == null ? "Informe os parâmetros corretamente." : pe.getMessage());
 		}
-		
-		super.okPressed();
 	}
 	
+	@Override
+	protected void configureShell(Shell newShell) {
+		newShell.setText("Softimob");
+		super.configureShell(newShell);
+	}
+
 }

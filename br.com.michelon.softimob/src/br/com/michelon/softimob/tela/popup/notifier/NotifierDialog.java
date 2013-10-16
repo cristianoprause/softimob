@@ -38,7 +38,7 @@ public class NotifierDialog {
     // how many tick steps we use when fading out 
     private static final int   FADE_OUT_STEP = 8;
 
-    private static final int HEIGHT = 110;
+    private static final int HEIGHT = 140;
     
     // how high the alpha value is when we have finished fading in 
     private static final int   FINAL_ALPHA   = 225;
@@ -175,7 +175,7 @@ public class NotifierDialog {
         if (Display.getDefault().getActiveShell() == null || Display.getDefault().getActiveShell().getMonitor() == null) { return; }
 
         Rectangle clientArea = Display.getDefault().getActiveShell().getMonitor().getClientArea();
-
+        
         int startX = clientArea.x + clientArea.width - 352;
         int startY = clientArea.y + clientArea.height - HEIGHT;
 
@@ -196,7 +196,6 @@ public class NotifierDialog {
         _shell.setLocation(startX, startY);
         _shell.setAlpha(0);
         _shell.setVisible(true);
-
         _activeShells.add(_shell);
 
         fadeIn(_shell);

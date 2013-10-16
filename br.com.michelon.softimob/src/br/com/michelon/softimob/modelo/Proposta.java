@@ -17,8 +17,15 @@ import javax.persistence.TemporalType;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Past;
 
+import org.eclipse.ui.IEditorInput;
+
+import br.com.michelon.softimob.aplicacao.editorInput.ImovelEditorInput;
+import br.com.michelon.softimob.aplicacao.service.GenericService;
+import br.com.michelon.softimob.aplicacao.service.PropostaService;
+import br.com.michelon.softimob.tela.editor.ImovelEditor;
+
 @Entity
-public class Proposta implements Serializable{
+public class Proposta implements Serializable, Pendencia{
 
 	private static final long serialVersionUID = 1L;
 
@@ -28,6 +35,7 @@ public class Proposta implements Serializable{
 
 	public static final int CONTRA_PROPOSTA_PROPRIETARIO = 3;
 	public static final int CONTRA_PROPOSTA_CLIENTE = 4;
+	public static final int PRIMEIRA = 5;
 	
 	@Id @GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
@@ -50,8 +58,8 @@ public class Proposta implements Serializable{
 	private Funcionario funcionario;
 	
 	@NotNull(message = "Informe o valor da proposta.")
-	@Column(precision = 14, scale = 2)
-	private BigDecimal valor = BigDecimal.ZERO;
+	@Column(precision = 14, scale = 2, nullable = false)
+	private BigDecimal valor;
 
 	@Column
 	private String observacoes;
@@ -62,8 +70,8 @@ public class Proposta implements Serializable{
 	@OneToOne(cascade = {CascadeType.ALL}, orphanRemoval = true)
 	private Proposta contraProposta;
 	
-	@Column
-	private Integer tipoContraProposta;
+	@Column(nullable = false)
+	private Integer tipoContraProposta = PRIMEIRA;
 	
 	@ManyToOne()
 	private Imovel imovel;
@@ -76,9 +84,6 @@ public class Proposta implements Serializable{
 	private Proposta(){}
 	
 	public Proposta(Proposta proposta) {
-		proposta.setContraProposta(this);
-		proposta.setStatus(Proposta.CONTRAPROPOSTA);
-		
 		setFuncionario(proposta.getFuncionario());
 		setCliente(proposta.getCliente());
 		setImovel(proposta.getImovel());
@@ -168,21 +173,71 @@ public class Proposta implements Serializable{
 		return tipoContraProposta;
 	}
 
+	public Comissionado getClienteProprietario(){
+		return tipoContraProposta != null && tipoContraProposta.equals(CONTRA_PROPOSTA_PROPRIETARIO) ? imovel.getProprietario() : cliente;
+	}
+	
 	public void setTipoContraProposta(Integer tipoContraProposta) {
 		this.tipoContraProposta = tipoContraProposta;
 	}
 
 	public String getRealizador() {
-		return tipoContraProposta == CONTRA_PROPOSTA_CLIENTE ? "Cliente - " + getCliente().getNome() : 
-			"Proprietário - " + getImovel().getProprietario().getNome();
+		return tipoContraProposta == null || CONTRA_PROPOSTA_CLIENTE == tipoContraProposta ? 
+				"Cliente - " + getCliente().getNome() : "Proprietário - " + getImovel().getProprietario().getNome();
 	}
 
+	@Override
+	public Date getDataGeracao() {
+		return getData();
+	}
+
+	@Override
+	public Date getDataVencimento() {
+		return null;
+	}
+
+	@Override
+	public String getDescricao() {
+		return String.format("Proposta de %s para %s referente ao %s", getCliente().getNome(), getImovel().getProprietario().getNome(), getImovel().getDescricao());
+	}
+
+	@Override
+	public boolean confirmarFinalizarPendencia() {
+		return false;
+	}
+	
+	@Override
+	public String getIdEditor() {
+		return ImovelEditor.ID;
+	}
+
+	@Override
+	public IEditorInput getEditorInput() {
+		ImovelEditorInput editorInput = new ImovelEditorInput();
+		editorInput.setModelo(getImovel());
+		return editorInput;
+	}
+
+	private static transient PropostaService service;
+	
+	@Override
+	public GenericService<?> getService() {
+		if(service == null)
+			service = new PropostaService();
+		return service;
+	}
+
+	@Override
+	public void finalizarPendencia() throws Exception {
+		((PropostaService)getService()).abrirTela(this);
+	}
+	
 	public String getStatusExtenso(){
 		Integer status = getStatus();
 		if(status == null)
 			return "Em aberto";
 		if(status == CONTRAPROPOSTA)
-			return "Contra-Proposta";
+			return "Contraproposta";
 		if(status == ACEITA)
 			return "Aceito";
 		if(status == RECUSADA)
@@ -214,5 +269,5 @@ public class Proposta implements Serializable{
 			return false;
 		return true;
 	}
-	
+
 }

@@ -12,6 +12,8 @@ import javax.persistence.Id;
 import javax.persistence.OneToOne;
 import javax.validation.constraints.NotNull;
 
+import org.eclipse.persistence.annotations.Index;
+
 import br.com.michelon.softimob.aplicacao.annotation.DeactivateOnDelete;
 
 @Entity
@@ -23,6 +25,7 @@ public class ModeloContrato implements Serializable{
 	@GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Long id;
 	
+	@Index
 	@NotNull(message = "O nome não pode ser vazio")
 	@Column(nullable = false, unique = true)
 	private String nome;
@@ -31,9 +34,21 @@ public class ModeloContrato implements Serializable{
 	@OneToOne(fetch=FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
 	private Arquivo arquivo;
 	
-	@Column
+	@Column(nullable = false)
 	@DeactivateOnDelete
-	private Boolean ativo;
+	private Boolean ativo = true;
+	
+	@OneToOne(cascade=CascadeType.ALL, orphanRemoval = true)
+	@br.com.michelon.softimob.aplicacao.annotation.Log
+	private Log log = new Log();
+	
+	public Log getLog() {
+		return log;
+	}
+	
+	public void setLog(Log log) {
+		this.log = log;
+	}
 	
 	public Long getId() {
 		return id;

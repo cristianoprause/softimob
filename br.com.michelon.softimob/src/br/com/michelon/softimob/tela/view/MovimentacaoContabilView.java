@@ -25,7 +25,7 @@ public class MovimentacaoContabilView extends GenericView<MovimentacaoContabil>{
 	private MovimentacaoContabilService service = new MovimentacaoContabilService();
 	
 	public MovimentacaoContabilView(){
-		super(false);
+		super(false, MovimentacaoContabil.class);
 		
 		atributos = Lists.newArrayList();
 		
@@ -33,11 +33,11 @@ public class MovimentacaoContabilView extends GenericView<MovimentacaoContabil>{
 		atributos.add(new ColumnProperties("Data de Lançamento", "data", 10, new DateStringValueFormatter()));
 		atributos.add(new ColumnProperties("Valor", "valor", 10));
 		atributos.add(new ColumnProperties("Data", "data", 10));
-		atributos.add(new ColumnProperties("Histórico", "historico", 10));
+		atributos.add(new ColumnProperties("Histórico", "data", 10));
 	}
 	
 	@Override
-	protected ColumnViewer criarTabela(Composite composite) {
+	protected ColumnViewer createTable(Composite composite) {
 		return MovimentacaoGenericXViewer.createXviewer(composite);
 	}
 	

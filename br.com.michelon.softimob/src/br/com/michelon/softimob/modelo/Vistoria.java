@@ -31,7 +31,7 @@ public class Vistoria implements Serializable, ContainsPhotos{
 	private Long id;
 	
 	@NotNull(message="Informe a data da vistoria.")
-	@Temporal(TemporalType.TIMESTAMP)
+	@Temporal(TemporalType.DATE)
 	@Column(nullable=false)
 	private Date data = new Date();
 	
@@ -70,8 +70,8 @@ public class Vistoria implements Serializable, ContainsPhotos{
 		if(instance != null){
 			CheckList chkList = instance.getCheckListVistoria();
 			if (chkList != null) {
-				for (String item : chkList.getItens()) {
-					getItensCheckList().add(new ItemCheckList(item));
+				for (Item item : chkList.getItens()) {
+					getItensCheckList().add(new ItemCheckList(item.getNome(), item.getObrigatorio()));
 				}
 			}
 		}

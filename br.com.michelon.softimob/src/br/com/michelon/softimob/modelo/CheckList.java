@@ -2,11 +2,13 @@ package br.com.michelon.softimob.modelo;
 
 import java.util.List;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.OneToMany;
 
 import org.hibernate.validator.constraints.NotEmpty;
 
@@ -20,12 +22,12 @@ public class CheckList {
 	@Id @GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Long id;
 	
-	@NotEmpty(message = "Nome da check list não pode ser vazia")
+	@NotEmpty(message = "Nome da checklist não pode ser vazia")
 	@Column(nullable = false)
 	private String nome;
 	
-	@Column
-	private List<String> itens = Lists.newArrayList();
+	@OneToMany(cascade={CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval=true)
+	private List<Item> itens = Lists.newArrayList();
 
 	@Column(nullable = false)
 	@DeactivateOnDelete
@@ -47,11 +49,11 @@ public class CheckList {
 		this.nome = nome;
 	}
 
-	public List<String> getItens() {
+	public List<Item> getItens() {
 		return this.itens;
 	}
 
-	public void setItens(List<String> itens) {
+	public void setItens(List<Item> itens) {
 		this.itens = itens;
 	}
 

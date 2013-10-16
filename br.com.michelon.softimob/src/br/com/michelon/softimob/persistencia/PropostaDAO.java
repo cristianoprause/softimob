@@ -14,5 +14,10 @@ public interface PropostaDAO extends CrudRepository<Proposta, Long>{
 	@Query(value="SELECT p FROM Proposta p WHERE p.imovel = :imovel AND " +
 			"(SELECT pAux.id FROM Proposta pAux WHERE pAux.contraProposta = p) IS NULL")
 	List<Proposta> findByImovel(@Param(value = "imovel")Imovel imovel);
+
+	List<Proposta> findByStatusIsNull();
+
+	@Query(value = "SELECT count(p) FROM Proposta p WHERE p.status is null")
+	Long findCountPendencias();
 	
 }

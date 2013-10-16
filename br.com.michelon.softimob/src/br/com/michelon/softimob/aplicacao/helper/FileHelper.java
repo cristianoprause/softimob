@@ -8,12 +8,16 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.List;
 
+import org.apache.log4j.Logger;
+
 import com.google.common.io.Files;
 
 import br.com.michelon.softimob.modelo.Arquivo;
 
 public class FileHelper {
 
+	private static Logger log = Logger.getLogger(FileHelper.class);
+	
 	public static byte[] getBytes(File file) {
 		int len = (int) file.length();
 		byte[] sendBuf = new byte[len];
@@ -22,29 +26,42 @@ public class FileHelper {
 			inFile = new FileInputStream(file);
 			inFile.read(sendBuf, 0, len);
 
+			inFile.close();
 		} catch (FileNotFoundException fnfex) {
-		} catch (IOException ioex) {}
-		
+			log.error("Erro ao pegar bytes do arquivo.", fnfex);
+		} catch (IOException ioex) {
+			log.error("Erro ao pegar bytes do arquivo.", ioex);
+		}
+			
 		return sendBuf;
 	}
 	
 	public static File criarDiretorioArquivos(List<Arquivo> arquivos){
-		File tempFolder = Files.createTempDir();
+		File tempFolder = criarDiretorioArquivos();
 		for(Arquivo arq : arquivos){
 			insertIntTempFolder(tempFolder, arq);
 		}
 		return tempFolder;
 	}
 	
+	public static File criarDiretorioArquivos(){
+		return Files.createTempDir();
+	}
+	
+	
 	public static void insertIntTempFolder(File createTempDir, Arquivo arq) {
-        File file = new File(createTempDir.getAbsoluteFile() + "/" + arq.getNome());
+		insertIntTempFolder(createTempDir, arq.getNome(), arq.getArquivo().getArquivo());
+	}
+	
+	public static void insertIntTempFolder(File createTempDir, String nome, byte[] arquivo) {
+        File file = new File(createTempDir.getAbsoluteFile() + "/" + nome);
  
         try {
 		    FileOutputStream fileOuputStream = new FileOutputStream(file); 
-		    fileOuputStream.write(arq.getArquivo().getArquivo());
+		    fileOuputStream.write(arquivo);
 		    fileOuputStream.close();
         }catch(Exception e){
-            e.printStackTrace();
+        	log.error("Erro ao inserir escrever em um diretório.");
         }
 	}
 	

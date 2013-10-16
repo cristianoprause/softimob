@@ -4,16 +4,14 @@ import java.io.Serializable;
 
 import javax.persistence.Column;
 import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.OneToOne;
 
+import org.apache.log4j.Logger;
 import org.hibernate.validator.constraints.br.CNPJ;
 
-import br.com.caelum.stella.boleto.bancos.Bancos;
 import br.com.michelon.softimob.aplicacao.service.ParametrosEmpresaService;
 
 @Entity
@@ -21,6 +19,8 @@ public class ParametrosEmpresa implements Serializable{
 
 	private static final long serialVersionUID = 1L;
 
+	private static Logger log = Logger.getLogger(ParametrosEmpresa.class);
+	
 	@Id @GeneratedValue(strategy=GenerationType.IDENTITY)
 	private Long id;
 	
@@ -71,20 +71,8 @@ public class ParametrosEmpresa implements Serializable{
 	private OrigemConta tipoContaComissao;
 	
 	@OneToOne
-	private OrigemConta tipoContaPrestacaoServico;
-	
-	@OneToOne
-	private PlanoConta contaVenda;
-	
-	@OneToOne
-	private PlanoConta contraPartidaVenda;
-	
-	@OneToOne
-	private PlanoConta contaAluguel;
-	
-	@OneToOne
-	private PlanoConta contraPartidaAluguel;
-	
+	private OrigemConta tipoContaAluguel;
+
 	@OneToOne
 	private PlanoConta contaDescontoConcedido;
 	
@@ -97,45 +85,51 @@ public class ParametrosEmpresa implements Serializable{
 	@OneToOne
 	private PlanoConta contaJurosRecebido;
 	
-	@Enumerated(EnumType.ORDINAL)
-	@Column
-	private Bancos banco;
+	@OneToOne
+	private PlanoConta contaCaixa;
 	
 	@Column
-	private String cedente;
-	
-	@Column
-	private Integer agencia;
+	private String agencia;
 	
 	@Column
 	private Character digitoAgencia;
 	
 	@Column
-	private Integer contaCorrente;
+	private String contaCorrente;
 	
 	@Column
 	private Character digitoContaCorrente;
 	
 	@Column
-	private Integer carteira;
+	private String numeroConvenio;
 	
 	@Column
-	private Long numeroConvenio;
+	private String localPagamento;
 	
 	@Column
-	private Long nossoNumero;
+	private String instrucaoSacado;
+	
+	@Column
+	private String instrucaoExtra;
 	
 	private ParametrosEmpresa(){}
 	
-	private static transient ParametrosEmpresa params;
+	private static transient ParametrosEmpresaService parametrosEmpresaService;	
 	
 	public static ParametrosEmpresa getInstance(){
 		try{
-			if(params == null)
-				params = new ParametrosEmpresaService().findParametrosEmpresa();
-			return params == null ? new ParametrosEmpresa() : params;
-		
+			if(parametrosEmpresaService == null)
+				parametrosEmpresaService = new ParametrosEmpresaService();
+			ParametrosEmpresa params = parametrosEmpresaService.findParametrosEmpresa();
+			
+			if(params == null){
+				params = new ParametrosEmpresa();
+				parametrosEmpresaService.salvar(params);
+			}
+				
+			return params;
 		}catch(Exception e){
+			log.error("Erro ao buscar parametros da empresa.", e);
 			return null;
 		}
 	}
@@ -148,6 +142,14 @@ public class ParametrosEmpresa implements Serializable{
 		this.creci = creci;
 	}
 
+	public PlanoConta getContaCaixa() {
+		return contaCaixa;
+	}
+	
+	public void setContaCaixa(PlanoConta contaCaixa) {
+		this.contaCaixa = contaCaixa;
+	}
+	
 	public ModeloContrato getContratoAluguel() {
 		return contratoAluguel;
 	}
@@ -220,38 +222,15 @@ public class ParametrosEmpresa implements Serializable{
 		this.tipoContaComissao = tipoContaComissao;
 	}
 
-	public PlanoConta getContaVenda() {
-		return contaVenda;
-	}
 
-	public void setContaVenda(PlanoConta contaVenda) {
-		this.contaVenda = contaVenda;
+	public OrigemConta getTipoContaAluguel() {
+		return tipoContaAluguel;
 	}
-
-	public PlanoConta getContraPartidaVenda() {
-		return contraPartidaVenda;
+	
+	public void setTipoContaAluguel(OrigemConta tipoContaAluguel) {
+		this.tipoContaAluguel = tipoContaAluguel;
 	}
-
-	public void setContraPartidaVenda(PlanoConta contraPartidaVenda) {
-		this.contraPartidaVenda = contraPartidaVenda;
-	}
-
-	public PlanoConta getContaAluguel() {
-		return contaAluguel;
-	}
-
-	public void setContaAluguel(PlanoConta contaAluguel) {
-		this.contaAluguel = contaAluguel;
-	}
-
-	public PlanoConta getContraPartidaAluguel() {
-		return contraPartidaAluguel;
-	}
-
-	public void setContraPartidaAluguel(PlanoConta contraPartidaAluguel) {
-		this.contraPartidaAluguel = contraPartidaAluguel;
-	}
-
+	
 	public Long getId() {
 		return id;
 	}
@@ -300,14 +279,6 @@ public class ParametrosEmpresa implements Serializable{
 		this.diaRecebAluguel = diaRecebAluguel;
 	}
 
-	public OrigemConta getTipoContaPrestacaoServico() {
-		return tipoContaPrestacaoServico;
-	}
-
-	public void setTipoContaPrestacaoServico(OrigemConta tipoContaPrestacaoServico) {
-		this.tipoContaPrestacaoServico = tipoContaPrestacaoServico;
-	}
-
 	public PlanoConta getContaDescontoConcedido() {
 		return contaDescontoConcedido;
 	}
@@ -340,35 +311,19 @@ public class ParametrosEmpresa implements Serializable{
 		this.contaJurosRecebido = contaJurosRecebido;
 	}
 	
-	public Bancos getBanco() {
-		return banco;
-	}
-	
-	public void setBanco(Bancos banco) {
-		this.banco = banco;
-	}
-	
-	public String getCedente() {
-		return cedente;
-	}
-
-	public void setCedente(String cedente) {
-		this.cedente = cedente;
-	}
-
-	public Integer getAgencia() {
+	public String getAgencia() {
 		return agencia;
 	}
 
-	public void setAgencia(Integer agencia) {
+	public void setAgencia(String agencia) {
 		this.agencia = agencia;
 	}
 
-	public Integer getContaCorrente() {
+	public String getContaCorrente() {
 		return contaCorrente;
 	}
 
-	public void setContaCorrente(Integer contaCorrente) {
+	public void setContaCorrente(String contaCorrente) {
 		this.contaCorrente = contaCorrente;
 	}
 
@@ -388,28 +343,36 @@ public class ParametrosEmpresa implements Serializable{
 		this.digitoContaCorrente = digitoContaCorrente;
 	}
 	
-	public Integer getCarteira() {
-		return carteira;
-	}
-
-	public void setCarteira(Integer carteira) {
-		this.carteira = carteira;
-	}
-
-	public Long getNumeroConvenio() {
+	public String getNumeroConvenio() {
 		return numeroConvenio;
 	}
 	
-	public void setNumeroConvenio(Long numeroConvenio) {
+	public void setNumeroConvenio(String numeroConvenio) {
 		this.numeroConvenio = numeroConvenio;
 	}
 	
-	public Long getNossoNumero() {
-		return nossoNumero;
+	public String getInstrucaoExtra() {
+		return instrucaoExtra;
 	}
 	
-	public void setNossoNumero(Long nossoNumero) {
-		this.nossoNumero = nossoNumero;
+	public String getInstrucaoSacado() {
+		return instrucaoSacado;
+	}
+	
+	public String getLocalPagamento() {
+		return localPagamento;
+	}
+	
+	public void setInstrucaoExtra(String instrucaoExtra) {
+		this.instrucaoExtra = instrucaoExtra;
+	}
+	
+	public void setInstrucaoSacado(String instrucaoSacado) {
+		this.instrucaoSacado = instrucaoSacado;
+	}
+	
+	public void setLocalPagamento(String localPagamento) {
+		this.localPagamento = localPagamento;
 	}
 	
 	@Override

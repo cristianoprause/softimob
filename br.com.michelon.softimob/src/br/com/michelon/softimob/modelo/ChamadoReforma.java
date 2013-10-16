@@ -2,6 +2,7 @@ package br.com.michelon.softimob.modelo;
 
 import java.io.Serializable;
 import java.math.BigDecimal;
+import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 
@@ -12,6 +13,7 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.ManyToOne;
+import javax.persistence.OneToMany;
 import javax.persistence.OneToOne;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
@@ -20,10 +22,12 @@ import javax.validation.constraints.NotNull;
 import org.eclipse.ui.IEditorInput;
 import org.hibernate.validator.constraints.NotEmpty;
 
-import br.com.michelon.softimob.aplicacao.service.AcontecimentoChamadoService;
+import br.com.michelon.softimob.aplicacao.editorInput.AluguelEditorInput;
 import br.com.michelon.softimob.aplicacao.service.ChamadoReformaService;
 import br.com.michelon.softimob.aplicacao.service.GenericService;
-import br.com.michelon.softimob.aplicacao.service.PendenciaService;
+import br.com.michelon.softimob.tela.editor.AluguelEditor;
+
+import com.google.common.collect.Lists;
 
 @Entity
 public class ChamadoReforma implements Serializable, Pendencia{
@@ -40,7 +44,7 @@ public class ChamadoReforma implements Serializable, Pendencia{
 	private Aluguel aluguel;
 	
 	@NotNull(message = "A data do chamado não pode ser vazia")
-	@Temporal(TemporalType.TIMESTAMP)
+	@Temporal(TemporalType.DATE)
 	private Date data = new Date();
 	
 	@ManyToOne
@@ -50,11 +54,18 @@ public class ChamadoReforma implements Serializable, Pendencia{
 	@Column(nullable = false)
 	private String problema;
 	
-	@OneToOne(cascade = CascadeType.ALL)
+	@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
 	private FinalizacaoChamadoReforma finalizacao;
+	
+	@OneToMany(cascade = CascadeType.ALL, orphanRemoval = true)
+	private List<AcontecimentoChamado> acontecimentos = Lists.newArrayList();
 	
 	public ChamadoReforma(Aluguel aluguel){
 		this.aluguel = aluguel;
+		
+		ParametrosEmpresa param = ParametrosEmpresa.getInstance();
+		if(param != null)
+			setFuncionario(param.getFuncionarioResponsavelReforma());
 	}
 	
 	@SuppressWarnings("unused")
@@ -76,10 +87,6 @@ public class ChamadoReforma implements Serializable, Pendencia{
 		this.problema = problema;
 	}
 
-	public List<AcontecimentoChamado> getAcontecimentos() {
-		return new AcontecimentoChamadoService().findByChamadoReforma(this);
-	}
-
 	@Override
 	public Date getDataGeracao() {
 		return data;
@@ -87,12 +94,22 @@ public class ChamadoReforma implements Serializable, Pendencia{
 
 	@Override
 	public Date getDataVencimento() {
+		ParametrosEmpresa param = ParametrosEmpresa.getInstance();
+		if(param.getDiasFinalizacaoReforma() != null){
+			Calendar c = Calendar.getInstance();
+			
+			c.setTime(getData());
+			c.set(Calendar.DAY_OF_MONTH, c.get(Calendar.DAY_OF_MONTH) + param.getDiasFinalizacaoReforma());
+			
+			return c.getTime();
+		}
+		
 		return null;
 	}
 
 	@Override
 	public String getDescricao() {
-		return "Chamado de Reforma"; 
+		return String.format("Chamado de Reforma de %s do %s", getAluguel().getCliente(), getAluguel().getContrato().getImovel().getDescricao()); 
 	}
 
 	public Date getData() {
@@ -117,26 +134,26 @@ public class ChamadoReforma implements Serializable, Pendencia{
 	
 	@Override
 	public String getIdEditor() {
-		// TODO Auto-generated method stub
-		return null;
+		return AluguelEditor.ID;
 	}
 
 	@Override
 	public IEditorInput getEditorInput() {
-		// TODO Auto-generated method stub
-		return null;
+		AluguelEditorInput ei = new AluguelEditorInput();
+		ei.setModelo(getAluguel());
+		return ei;
 	}
 
 	@Override
 	public BigDecimal getValor() {
-		// TODO Auto-generated method stub
 		return null;
 	}
 
 	@Override
 	public Date getDataFechamento() {
-		// TODO Auto-generated method stub
-		return null;
+		if(finalizacao == null)
+			return null;
+		return finalizacao.getData();
 	}
 	
 	public Aluguel getAluguel() {
@@ -155,8 +172,16 @@ public class ChamadoReforma implements Serializable, Pendencia{
 		this.finalizacao = finalizacao;
 	}
 	
+	public List<AcontecimentoChamado> getAcontecimentos(){
+		return acontecimentos;
+	}
+	
+	@Override
+	public boolean confirmarFinalizarPendencia() {
+		return false;
+	}
+	
 	private transient static ChamadoReformaService c;
-	private transient static PendenciaService pService;
 	
 	@Override
 	public GenericService<?> getService() {
@@ -167,9 +192,7 @@ public class ChamadoReforma implements Serializable, Pendencia{
 
 	@Override
 	public void finalizarPendencia() throws Exception {
-		if(pService == null)
-			pService = new PendenciaService();
-		pService.finalizarPendencia(this);
+		((ChamadoReformaService)getService()).abrirTela(this);
 	}
 	
 	@Override

@@ -34,7 +34,8 @@ public class LoginDialog extends TitleAreaDialog{
 		setMessage("Informe seu login e senha.");
 		setTitle("Softimob - Sistema para imobiliária.");
 		
-		Composite composite = new Composite(parent, SWT.NONE);
+		Composite area = (Composite) super.createDialogArea(parent);
+		Composite composite = new Composite(area, SWT.NONE);
 		composite.setLayout(new GridLayout(2, false));
 		composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 		
@@ -43,6 +44,12 @@ public class LoginDialog extends TitleAreaDialog{
 		
 		txtLogin = new Text(composite, SWT.BORDER);
 		txtLogin.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		txtLogin.addFocusListener(new FocusAdapter() {
+			@Override
+			public void focusGained(FocusEvent e) {
+				((Text)e.widget).selectAll();
+			}
+		});
 		
 		Label lblSenha = new Label(composite, SWT.NONE);
 		lblSenha.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
@@ -57,7 +64,7 @@ public class LoginDialog extends TitleAreaDialog{
 			}
 		});
 		
-		return composite;
+		return area;
 	}
 
 	@Override

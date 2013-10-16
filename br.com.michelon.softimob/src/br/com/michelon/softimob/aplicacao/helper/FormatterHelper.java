@@ -3,10 +3,12 @@ package br.com.michelon.softimob.aplicacao.helper;
 import java.math.BigDecimal;
 import java.text.DateFormat;
 import java.text.DecimalFormat;
+import java.text.Normalizer;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 import org.apache.commons.lang.StringUtils;
 
@@ -18,6 +20,7 @@ public class FormatterHelper {
 	
 	private static SimpleDateFormat sdf = new SimpleDateFormat("dd/MM/yyyy");
 	private static SimpleDateFormat sdfPeriodo = new SimpleDateFormat("MM/yyyy");
+	private static SimpleDateFormat sdfHorasMinutos = new SimpleDateFormat("dd/MM/yyyy HH:mm");
 	private static DecimalFormat decimalFormat;
 	
 	
@@ -54,13 +57,25 @@ public class FormatterHelper {
 
 			@Override
 			public String format(BigDecimal arg0) {
+				if(arg0 == null)
+					return StringUtils.EMPTY;
 				return getDecimalFormat().format(arg0);
 			}
 
 			@Override
 			public BigDecimal parse(String arg0) {
 				try {
-					return (BigDecimal) getDecimalFormat().parse(arg0);
+					Number parse = getDecimalFormat().parse(arg0);
+					if(parse instanceof Long)
+						return BigDecimal.valueOf((Long) parse);
+					Number number = getDecimalFormat().parse(arg0);
+					if(number instanceof BigDecimal)
+						return (BigDecimal) number;
+					if(number instanceof Double)
+						return new BigDecimal((Double)number);
+					if(number instanceof Integer)
+						return new BigDecimal((Integer)number);
+					return null;
 				} catch (ParseException e) {
 					return null;
 				}
@@ -93,6 +108,38 @@ public class FormatterHelper {
 	
 	public static IValueFormatter<BigDecimal, String> getDefaultValueFormatterToMoney(){
 		return getDecimalFormatter();
+	}
+
+	public static SimpleDateFormat getSimpleDateFormatHorasMinutos() {
+		return sdfHorasMinutos;
+	}
+	
+	public static String getDataFormatada(Date data){
+		return DateHelper.getDataExtenso(data);
+	}
+	
+	public static String removerAcentos(String str){
+		String nfdNormalizedString = Normalizer.normalize(str, Normalizer.Form.NFD); 
+        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+        return pattern.matcher(nfdNormalizedString).replaceAll("");
+	}
+
+	public static String formatarSeisNumeros(String s){
+		while(s.length() != 6){
+			s = "0" + s;
+		}
+		return s;
+	}
+	
+	/**
+	 * Passando a string "Ola" com 5 letras vai voltar "Ola  "
+	 */
+	public static String preencherBranco(String s, int lenght){
+		String retorno = StringUtils.EMPTY;
+		for (int i = 0; i < lenght; i++) {
+			retorno = retorno + (i < s.length() ? s.charAt(i) : ' ');
+		}
+		return retorno;
 	}
 	
 }

@@ -23,6 +23,7 @@ import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Event;
 import org.eclipse.wb.swt.ImageRepository;
 
 import br.com.michelon.softimob.aplicacao.helper.DialogHelper;
@@ -65,7 +66,7 @@ public class PhotoComposite extends Composite {
 		gallery = new Gallery(this, SWT.V_SCROLL | SWT.MULTI | SWT.BORDER);
 		gallery.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 2));
 		
-		DefaultGalleryGroupRenderer gr = new DefaultGalleryGroupRenderer();
+		final DefaultGalleryGroupRenderer gr = new DefaultGalleryGroupRenderer();
 		
 		gr.setAnimation(true);
 		gr.setMinMargin(2);
@@ -102,7 +103,8 @@ public class PhotoComposite extends Composite {
 					FileHelper.openFile(tempFolder, gal.getSelection()[0].getText());
 				} catch (IOException e1) {
 					log.error("Erro ao abrir as fotos.", e1);
-					DialogHelper.openError("Erro ao abrir as fotos do imóvel.");
+					DialogHelper.openErrorMultiStatus("Erro ao abrir as fotos do imóvel.\n" +
+							"Verifique se seu computador possui um visualizador configurado para arquivos JPG.", e1.getMessage());
 				}
 			}
 		});
@@ -115,6 +117,11 @@ public class PhotoComposite extends Composite {
 		btnNewButton_1.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
+				giFotosImovel.setExpanded(true);
+				Event event = new Event();
+				event.item = giFotosImovel;
+				gallery.notifyListeners(SWT.Expand, event);
+				
 				List<Arquivo> photos = DialogHelper.openPhotoDialog();
 				
 				if(photos == null || photos.size() < 1)
@@ -143,10 +150,10 @@ public class PhotoComposite extends Composite {
 			}
 		});
 		
-		Button btnNewButton_2 = new Button(this, SWT.NONE);
-		btnNewButton_2.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, true, 1, 1));
-		btnNewButton_2.setImage(ImageRepository.DELETE_16.getImage());
-		btnNewButton_2.addSelectionListener(new SelectionAdapter() {
+		Button btnRemover = new Button(this, SWT.NONE);
+		btnRemover.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, true, 1, 1));
+		btnRemover.setImage(ImageRepository.REMOVE_16.getImage());
+		btnRemover.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				GalleryItem[] selection = gallery.getSelection();

@@ -3,6 +3,7 @@ package br.com.michelon.softimob.tela.view;
 import java.math.BigDecimal;
 import java.util.List;
 
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.core.databinding.DataBindingContext;
 import org.eclipse.core.databinding.beans.PojoProperties;
 import org.eclipse.core.databinding.observable.list.IObservableList;
@@ -33,13 +34,11 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.ui.part.ViewPart;
 import org.eclipse.wb.swt.ImageRepository;
 
-import com.google.common.collect.Lists;
-
+import br.com.michelon.softimob.aplicacao.helper.NumberHelper;
 import br.com.michelon.softimob.aplicacao.helper.SelectionHelper;
 import br.com.michelon.softimob.aplicacao.helper.ShellHelper;
 import br.com.michelon.softimob.aplicacao.helper.listElementDialog.ListElementDialogHelper;
 import br.com.michelon.softimob.aplicacao.helper.listElementDialog.ListElementDialogHelper.TipoDialog;
-import br.com.michelon.softimob.aplicacao.service.BairroService;
 import br.com.michelon.softimob.aplicacao.service.CidadeService;
 import br.com.michelon.softimob.aplicacao.service.ImovelService;
 import br.com.michelon.softimob.aplicacao.service.TipoImovelService;
@@ -52,7 +51,12 @@ import br.com.michelon.softimob.modelo.Imovel;
 import br.com.michelon.softimob.modelo.TipoImovel;
 import br.com.michelon.softimob.tela.binding.updateValueStrategy.UVSHelper;
 import br.com.michelon.softimob.tela.dialog.ComodoDialog;
+import br.com.michelon.softimob.tela.widget.LoadOnFocus;
 import br.com.michelon.softimob.tela.widget.MoneyTextField;
+
+import com.google.common.collect.Lists;
+
+import de.ralfebert.rcputils.properties.IValue;
 import de.ralfebert.rcputils.tables.TableViewerBuilder;
 
 public class BuscaAvancadaImovelView extends ViewPart {
@@ -204,7 +208,7 @@ public class BuscaAvancadaImovelView extends ViewPart {
 		Combo combo = cvTipoImovel.getCombo();
 		combo.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 3, 1));
 		cvTipoImovel.setContentProvider(ArrayContentProvider.getInstance());
-		cvTipoImovel.setInput(new TipoImovelService().findAll());
+		LoadOnFocus.setFocusGainedListener(cvTipoImovel, new TipoImovelService());
 		new Label(composite_5, SWT.NONE);
 		new Label(composite_5, SWT.NONE);
 		new Label(composite_5, SWT.NONE);
@@ -217,7 +221,7 @@ public class BuscaAvancadaImovelView extends ViewPart {
 		cvCidade = new ComboViewer(composite_5, SWT.READ_ONLY);
 		Combo combo_2 = cvCidade.getCombo();
 		cvCidade.setContentProvider(ArrayContentProvider.getInstance());
-		cvCidade.setInput(new CidadeService().findAll());
+		LoadOnFocus.setFocusGainedListener(cvCidade, new CidadeService());
 		cvCidade.addSelectionChangedListener(new ISelectionChangedListener() {
 			@Override
 			public void selectionChanged(SelectionChangedEvent event) {
@@ -238,7 +242,6 @@ public class BuscaAvancadaImovelView extends ViewPart {
 		cvBairro = new ComboViewer(composite_5, SWT.READ_ONLY);
 		Combo combo_1 = cvBairro.getCombo();
 		cvBairro.setContentProvider(ArrayContentProvider.getInstance());
-		cvBairro.setInput(new BairroService().findAll());
 		combo_1.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, false, false, 3, 1));
 		
 		Label lblObservaes_3 = new Label(composite, SWT.NONE);
@@ -369,6 +372,19 @@ public class BuscaAvancadaImovelView extends ViewPart {
 		tvbComodo = new TableViewerBuilder(composite);
 		
 		tvbComodo.createColumn("Cômodo").bindToProperty("tipoComodo.nome").build();
+		tvbComodo.createColumn("Quantidade").bindToValue(new IValue() {
+			
+			@Override
+			public void setValue(Object arg0, Object arg1) {
+				((Comodo)arg0).setQuantidade(!arg1.toString().isEmpty() ? new Integer(NumberHelper.extractNumbers(arg1.toString())) : null);
+			}
+			
+			@Override
+			public Object getValue(Object arg0) {
+				Integer quantidade = ((Comodo)arg0).getQuantidade();
+				return quantidade == null ? StringUtils.EMPTY : quantidade;
+			}
+		}).makeEditable().build();
 		tvbComodo.createColumn("Descrição").bindToProperty("descricao").makeEditable().build();
 	}
 	

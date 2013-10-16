@@ -1,6 +1,7 @@
 package br.com.michelon.softimob.tela.dialog;
 
 import java.math.BigDecimal;
+import java.util.Date;
 
 import org.apache.log4j.Logger;
 import org.eclipse.core.databinding.DataBindingContext;
@@ -13,7 +14,6 @@ import org.eclipse.jface.dialogs.TitleAreaDialog;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.nebula.jface.viewer.radiogroup.RadioGroupViewer;
-import org.eclipse.nebula.widgets.cdatetime.CDateTime;
 import org.eclipse.nebula.widgets.radiogroup.RadioGroup;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.layout.GridData;
@@ -29,9 +29,8 @@ import br.com.michelon.softimob.aplicacao.helper.ValidatorHelper;
 import br.com.michelon.softimob.aplicacao.service.PropostaService;
 import br.com.michelon.softimob.modelo.Proposta;
 import br.com.michelon.softimob.tela.binding.updateValueStrategy.UVSHelper;
-import br.com.michelon.softimob.tela.widget.MoneyTextField;
 import br.com.michelon.softimob.tela.widget.DateTextField;
-import java.util.Date;
+import br.com.michelon.softimob.tela.widget.MoneyTextField;
 
 public class ContraPropostaDialog extends TitleAreaDialog {
 
@@ -54,9 +53,9 @@ public class ContraPropostaDialog extends TitleAreaDialog {
 
 	@Override
 	protected Control createDialogArea(Composite parent) {
-		parent.setLayout(new GridLayout(1, false));
 
-		Composite composite = new Composite(parent, SWT.NONE);
+		Composite area = (Composite) super.createDialogArea(parent);
+		Composite composite = new Composite(area, SWT.NONE);
 		composite.setLayout(new GridLayout(2, false));
 		composite.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 
@@ -84,9 +83,6 @@ public class ContraPropostaDialog extends TitleAreaDialog {
 		radioGroupViewer = new RadioGroupViewer(composite, SWT.NONE);
 		radioGroup = radioGroupViewer.getRadioGroup();
 		radioGroup.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
-		
-		new CDateTime(composite, SWT.BORDER);
-
 		radioGroupViewer.setContentProvider(ArrayContentProvider.getInstance());
 		radioGroupViewer.setLabelProvider(new LabelProvider() {
 			@Override
@@ -110,27 +106,46 @@ public class ContraPropostaDialog extends TitleAreaDialog {
 		valueContraProposta.setValue(new Proposta(proposta));
 		initDataBindings();
 
-		return composite;
+		return area;
 	}
 
 	protected void okPressed() {
 		try {
-			if (ValidatorHelper.validarComMensagem(proposta) && ValidatorHelper.validarComMensagem(valueContraProposta.getValue())){
+			if (ValidatorHelper.validarComMensagem(proposta) && ValidatorHelper.validarComMensagem(getCurrentValue())){
+				
+				if(getCurrentValue().getTipoContraProposta() == null || getCurrentValue().getTipoContraProposta().equals(Proposta.PRIMEIRA)){
+					DialogHelper.openWarning("Selecione quem fez a contraproposta.");
+					return;
+				}
+				
+				proposta.setContraProposta(getCurrentValue());
+				proposta.setStatus(Proposta.CONTRAPROPOSTA);
 				proposta.setDataFechamento(((Proposta)valueContraProposta.getValue()).getData());
+				
 				new PropostaService().salvar(proposta);
-				DialogHelper.openInformation("Contra-proposta salva com sucesso.");
+				DialogHelper.openInformation("Contraproposta salva com sucesso.");
 				
 				super.okPressed();
 			}
 		} catch (Exception e) {
-			log.error("Erro ao salvar contra-proposta.", e);
-			DialogHelper.openError("Erro ao gerar contra-proposta.\n" + e.getMessage());
+			log.error("Erro ao salvar contraproposta.", e);
+			DialogHelper.openErrorMultiStatus("Erro ao gerar contraproposta.", e.getMessage());
 		}
 	};
 
+	@Override
+	protected void configureShell(Shell newShell) {
+		newShell.setText("Contraproposta");
+		super.configureShell(newShell);
+	}
+	
+	private Proposta getCurrentValue(){
+		return (Proposta) valueContraProposta.getValue();
+	}
+	
 	private void setTitleAndMessage() {
-		setTitle("Contra proposta");
-		setMessage("Informe os valores da contra-proposta");
+		setTitle("Contraproposta");
+		setMessage("Informe os valores da contraproposta");
 	}
 	protected DataBindingContext initDataBindings() {
 		DataBindingContext bindingContext = new DataBindingContext();

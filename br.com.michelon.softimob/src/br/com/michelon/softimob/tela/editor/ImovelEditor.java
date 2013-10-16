@@ -1,7 +1,6 @@
 package br.com.michelon.softimob.tela.editor;
 
 import java.math.BigDecimal;
-import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 
@@ -48,11 +47,15 @@ import org.eclipse.ui.PlatformUI;
 import org.eclipse.wb.swt.ImageRepository;
 
 import br.com.michelon.softimob.aplicacao.editorInput.AluguelEditorInput;
+import br.com.michelon.softimob.aplicacao.exception.ValidationException;
+import br.com.michelon.softimob.aplicacao.helper.ContratoHelper;
+import br.com.michelon.softimob.aplicacao.helper.DateHelper;
 import br.com.michelon.softimob.aplicacao.helper.DialogHelper;
 import br.com.michelon.softimob.aplicacao.helper.FormatterHelper;
 import br.com.michelon.softimob.aplicacao.helper.SelectionHelper;
 import br.com.michelon.softimob.aplicacao.helper.ShellHelper;
 import br.com.michelon.softimob.aplicacao.helper.WidgetHelper;
+import br.com.michelon.softimob.aplicacao.helper.listElementDialog.InputListener;
 import br.com.michelon.softimob.aplicacao.helper.listElementDialog.ListElementDialogHelper;
 import br.com.michelon.softimob.aplicacao.helper.listElementDialog.ListElementDialogHelper.TipoDialog;
 import br.com.michelon.softimob.aplicacao.service.AluguelService;
@@ -64,6 +67,7 @@ import br.com.michelon.softimob.aplicacao.service.GenericService;
 import br.com.michelon.softimob.aplicacao.service.ImovelService;
 import br.com.michelon.softimob.aplicacao.service.PropostaService;
 import br.com.michelon.softimob.aplicacao.service.ReservaService;
+import br.com.michelon.softimob.aplicacao.service.TipoComodoService;
 import br.com.michelon.softimob.aplicacao.service.TipoImovelService;
 import br.com.michelon.softimob.modelo.Aluguel;
 import br.com.michelon.softimob.modelo.Chave;
@@ -75,23 +79,31 @@ import br.com.michelon.softimob.modelo.ContratoPrestacaoServico.TipoContrato;
 import br.com.michelon.softimob.modelo.Feedback;
 import br.com.michelon.softimob.modelo.Funcionario;
 import br.com.michelon.softimob.modelo.Imovel;
+import br.com.michelon.softimob.modelo.ModeloContrato;
 import br.com.michelon.softimob.modelo.Proposta;
 import br.com.michelon.softimob.modelo.Reserva;
 import br.com.michelon.softimob.modelo.TipoComodo;
 import br.com.michelon.softimob.modelo.TipoImovel;
 import br.com.michelon.softimob.tela.binding.updateValueStrategy.UVSHelper;
 import br.com.michelon.softimob.tela.dialog.ContraPropostaDialog;
+import br.com.michelon.softimob.tela.dialog.FinalizarPropostaDialog;
+import br.com.michelon.softimob.tela.dialog.ValidationErrorDialog;
 import br.com.michelon.softimob.tela.widget.DateStringValueFormatter;
 import br.com.michelon.softimob.tela.widget.DateTextField;
+import br.com.michelon.softimob.tela.widget.DateTimeStringValueFormatter;
 import br.com.michelon.softimob.tela.widget.DateTimeTextField;
 import br.com.michelon.softimob.tela.widget.EnderecoGroup;
+import br.com.michelon.softimob.tela.widget.LoadOnFocus;
 import br.com.michelon.softimob.tela.widget.MoneyTextField;
 import br.com.michelon.softimob.tela.widget.NullStringValueFormatter;
+import br.com.michelon.softimob.tela.widget.NumberTextField;
 import br.com.michelon.softimob.tela.widget.PhotoComposite;
 import br.com.michelon.softimob.tela.widget.propostaXViewer.PropostaGenericXViewer;
 import br.com.michelon.softimob.tela.widget.xViewer.GenericXViewer;
+
+import com.google.common.collect.Lists;
+
 import de.ralfebert.rcputils.tables.TableViewerBuilder;
-import de.ralfebert.rcputils.tables.format.Formatter;
 
 public class ImovelEditor extends GenericEditor<Imovel>{
 	
@@ -135,9 +147,9 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 	private Text text_15;
 	private Text text_20;
 	private Text text_9;
-	private Text text_32;
+	private Text txtDataFeedback;
 	private Text text_33;
-	private Text text_4;
+	private Text txtValorImovel;
 	private Text text_26;
 	private Text txtDescrio;
 	private Text text_30;
@@ -160,6 +172,8 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 
 	private CTabFolder tfImovel;
 	private CTabItem tbtmEndereo;
+	private Text txtQuantidadeComodos;
+	private Text txtModeloContratoPrestacaoServico;
 
 	public ImovelEditor() {
 		super(Imovel.class);
@@ -185,14 +199,9 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		lblCdigo.setText("Código");
 		
 		txtCodigoImovel = new Text(composite, SWT.BORDER);
+		txtCodigoImovel.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 7, 1));
 		txtCodigoImovel.setEditable(false);
 		txtCodigoImovel.setEnabled(false);
-		new Label(composite, SWT.NONE);
-		new Label(composite, SWT.NONE);
-		new Label(composite, SWT.NONE);
-		new Label(composite, SWT.NONE);
-		new Label(composite, SWT.NONE);
-		new Label(composite, SWT.NONE);
 		
 		Label lblTipoImvel = new Label(composite, SWT.NONE);
 		lblTipoImvel.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
@@ -208,7 +217,7 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 			}
 		});
 		cvTipoImovel.setContentProvider(ArrayContentProvider.getInstance());
-		cvTipoImovel.setInput(new TipoImovelService().findAll());
+		LoadOnFocus.setFocusGainedListener(cvTipoImovel, new TipoImovelService());
 		
 		Label lblProprietario = new Label(composite, SWT.NONE);
 		lblProprietario.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
@@ -217,7 +226,6 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		txtProprietario = new Text(composite, SWT.BORDER);
 		txtProprietario.setEditable(false);
 		txtProprietario.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
-		ListElementDialogHelper.addListElementDialogToText(TipoDialog.CLIENTE, txtProprietario, value, "proprietario");
 		
 		Button btnSelecionarProprietario = new Button(composite, SWT.NONE);
 		btnSelecionarProprietario.setImage(ImageRepository.SEARCH_16.getImage());
@@ -248,9 +256,8 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		lblMetragem.setText("Metragem");
 		
 		txtMetragem = new Text(composite, SWT.BORDER);
+		txtMetragem.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, false, false, 3, 1));
 		new FormattedText(txtMetragem).setFormatter(new NumberFormatter("##############"));
-		new Label(composite, SWT.NONE);
-		new Label(composite, SWT.NONE);
 		
 		Label lblObservaes_3 = new Label(composite, SWT.NONE);
 		lblObservaes_3.setLayoutData(new GridData(SWT.RIGHT, SWT.TOP, false, false, 1, 1));
@@ -283,10 +290,10 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		Composite composite_5 = new Composite(tfImovel, SWT.NONE);
 		tbtmDescrio_1.setControl(composite_5);
 		composite_5.setLayout(new GridLayout(1, false));
-				
+		
 		Composite composite_10 = new Composite(composite_5, SWT.NONE);
 		composite_10.setLayout(new GridLayout(1, false));
-		composite_10.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 2));
+		composite_10.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 		
 		criarTabelaComodo(composite_10);
 		
@@ -301,16 +308,34 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		
 		text_26 = new Text(grpCmodo, SWT.BORDER | SWT.SEARCH | SWT.ICON_CANCEL);
 		text_26.setEditable(false);
-		text_26.setLayoutData(new GridData(SWT.FILL, SWT.BEGINNING, true, false));
+		text_26.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false));
 		
 		Button btnSelecionarComodo = new Button(grpCmodo, SWT.NONE);
 		btnSelecionarComodo.setImage(ImageRepository.SEARCH_16.getImage());
-		ListElementDialogHelper.addSelectionListDialogToButton(TipoDialog.COMODO, btnSelecionarComodo, valueComodo, "tipoComodo");
+		ListElementDialogHelper.addSelectionListDialogToButton(TipoDialog.COMODO, btnSelecionarComodo, valueComodo, "tipoComodo", new InputListener<TipoComodo>() {
+
+			private TipoComodoService service = new TipoComodoService();
+			
+			@Override
+			public List<TipoComodo> getInput() {
+				return service.findByTipoImovel(getCurrentObject().getTipo());
+			}
+		});
 		
 		Button btnRemoverComodo = new Button(grpCmodo, SWT.NONE);
 		btnRemoverComodo.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
 		btnRemoverComodo.setImage(ImageRepository.REMOVE_16.getImage());
 		ListElementDialogHelper.addSelectionToRemoveButton(btnRemoverComodo, valueComodo, "tipoComodo", TipoComodo.class);
+		
+		Label lblQuantidade = new Label(grpCmodo, SWT.NONE);
+		lblQuantidade.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
+		lblQuantidade.setText("Quantidade");
+		
+		NumberTextField numberTextField = new NumberTextField(grpCmodo);
+		txtQuantidadeComodos = numberTextField.getControl();
+		txtQuantidadeComodos.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		new Label(grpCmodo, SWT.NONE);
+		new Label(grpCmodo, SWT.NONE);
 
 		Label lblDescrio_3 = new Label(grpCmodo, SWT.NONE);
 		lblDescrio_3.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
@@ -408,8 +433,8 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		lblData_1.setText("Data");
 		
 		DateTimeTextField dateTextField = new DateTimeTextField(grpNovoHistrico);
-		text_32 = dateTextField.getControl();
-		text_32.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		txtDataFeedback = dateTextField.getControl();
+		txtDataFeedback.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 		new Label(grpNovoHistrico, SWT.NONE);
 		new Label(grpNovoHistrico, SWT.NONE);
 		
@@ -673,7 +698,11 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		createButtonAddItem(grpReserva, new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
-				addReserva();
+				try {
+					addReserva();
+				} catch (ValidationException e1) {
+					new ValidationErrorDialog(ShellHelper.getActiveShell(), e1.getMessage()).open();
+				}
 			}
 		});
 		
@@ -686,12 +715,14 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		
 		Composite composite_8 = new Composite(composite_7, SWT.NONE);
 		composite_8.setLayout(new GridLayout(1, false));
-		composite_8.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+		GridData gd_composite_8 = new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1);
+		gd_composite_8.heightHint = 77;
+		composite_8.setLayoutData(gd_composite_8);
 		criarTabelaContratoPrestacaoServico(composite_8);
 		
 		Group grpContratoPrestaoDe = new Group(composite_7, SWT.NONE);
 		grpContratoPrestaoDe.setLayout(new GridLayout(4, false));
-		grpContratoPrestaoDe.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, true, 1, 1));
+		grpContratoPrestaoDe.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
 		grpContratoPrestaoDe.setText("Contrato Prestação de Serviço");
 		
 		Label lblFuncionrio_2 = new Label(grpContratoPrestaoDe, SWT.NONE);
@@ -715,7 +746,7 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		
 		radioGroupViewer_1 = new RadioGroupViewer(grpContratoPrestaoDe, SWT.NONE);
 		RadioGroup radioGroup_1 = radioGroupViewer_1.getRadioGroup();
-		radioGroup_1.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, true, 1, 1));
+		radioGroup_1.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
 		radioGroupViewer_1.setLabelProvider(new LabelProvider(){
 			@Override
 			public String getText(Object element) {
@@ -750,21 +781,32 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		
 		Label lblValor = new Label(grpContratoPrestaoDe, SWT.NONE);
 		lblValor.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
-		lblValor.setText("Valor");
+		lblValor.setText("Valor do imóvel");
 		
 		MoneyTextField moneyTextField = new MoneyTextField(grpContratoPrestaoDe);
-		text_4 = moneyTextField.getControl();
-		text_4.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		txtValorImovel = moneyTextField.getControl();
+		txtValorImovel.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 		new Label(grpContratoPrestaoDe, SWT.NONE);
 		new Label(grpContratoPrestaoDe, SWT.NONE);
+		
+		Label lblContrato = new Label(grpContratoPrestaoDe, SWT.NONE);
+		lblContrato.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
+		lblContrato.setText("Contrato");
+		
+		txtModeloContratoPrestacaoServico = new Text(grpContratoPrestaoDe, SWT.BORDER | SWT.READ_ONLY);
+		txtModeloContratoPrestacaoServico.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
+		
+		Button button_2 = new Button(grpContratoPrestaoDe, SWT.NONE);
+		button_2.setImage(ImageRepository.SEARCH_16.getImage());
+		ListElementDialogHelper.addSelectionListDialogToButton(TipoDialog.MODELO_CONTRATO, button_2, valueContrato, "modeloContrato");
+		
+		Button button_10 = new Button(grpContratoPrestaoDe, SWT.NONE);
+		button_10.setImage(ImageRepository.REMOVE_16.getImage());
+		ListElementDialogHelper.addSelectionToRemoveButton(button_10, valueContrato, "modeloContrato", ModeloContrato.class);
 		new Label(grpContratoPrestaoDe, SWT.NONE);
 		
 		btnDivulgar = new Button(grpContratoPrestaoDe, SWT.CHECK);
 		btnDivulgar.setText("Divulgar");
-		new Label(grpContratoPrestaoDe, SWT.NONE);
-		new Label(grpContratoPrestaoDe, SWT.NONE);
-		new Label(grpContratoPrestaoDe, SWT.NONE);
-		new Label(grpContratoPrestaoDe, SWT.NONE);
 		new Label(grpContratoPrestaoDe, SWT.NONE);
 		
 		createButtonAddItem(grpContratoPrestaoDe, new SelectionAdapter() {
@@ -809,7 +851,7 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		
 		tvbContatoPrestacaoServico.createColumn("Data").setPercentWidth(10).bindToProperty("dataInicio").format(new DateStringValueFormatter()).build();
 		tvbContatoPrestacaoServico.createColumn("Data de Vencimento").setPercentWidth(10).bindToProperty("dataVencimento").format(new DateStringValueFormatter()).build();
-		tvbContatoPrestacaoServico.createColumn("Valor").setPercentWidth(10).bindToProperty("valor").format(FormatterHelper.getCurrencyFormatter()).build();
+		tvbContatoPrestacaoServico.createColumn("Valor de Imóvel").setPercentWidth(10).bindToProperty("valorImovel").format(FormatterHelper.getDefaultValueFormatterToMoney()).build();
 		tvbContatoPrestacaoServico.createColumn("Funcionário").setPercentWidth(20).format(new NullStringValueFormatter()).bindToProperty("funcionario.nome").build();
 		tvbContatoPrestacaoServico.createColumn("Tipo").setPercentWidth(10).bindToProperty("tipo").build();
 		tvbContatoPrestacaoServico.createColumn("Divulgar").bindToProperty("divulgarExtenso").build();
@@ -817,7 +859,23 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		tvbContatoPrestacaoServico.setInput(getCurrentObject().getContratos());
 		tvContratosPrestacaoServico = tvbContatoPrestacaoServico.getTableViewer();
 		
-		WidgetHelper.addMenusToTable(tvbContatoPrestacaoServico, new ContratoPrestacaoServicoService(), valueContrato);
+		Menu menus = WidgetHelper.addMenusToTable(tvbContatoPrestacaoServico, new ContratoPrestacaoServicoService(), valueContrato);
+		
+		MenuItem miGerarContrato = new MenuItem(menus, SWT.BORDER);
+		miGerarContrato.setText("Gerar contrato");
+		miGerarContrato.setImage(ImageRepository.CONTRATO_16.getImage());
+		miGerarContrato.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				ContratoPrestacaoServico contrato = (ContratoPrestacaoServico) SelectionHelper.getObject(tvContratosPrestacaoServico.getSelection());
+				
+				if(contrato == null)
+					return;
+				
+				ContratoHelper.gerarContrato(contrato.getModeloContrato().getArquivo(), contrato);
+			}
+		});
+		
 	}
 
 	private void criarTabelaReservas(Composite composite) {
@@ -827,7 +885,7 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		tvbReserva.createColumn("Data de Vencimento").setPercentWidth(10).bindToProperty("dataVencimento").format(new DateStringValueFormatter()).build();
 		tvbReserva.createColumn("Cliente").setPercentWidth(15).bindToProperty("cliente.nome").build();
 		tvbReserva.createColumn("Funcionário").setPercentWidth(15).bindToProperty("funcionario.nome").format(new NullStringValueFormatter()).build();
-		tvbReserva.createColumn("Valor").bindToProperty("valor").setPercentWidth(10).format(FormatterHelper.getCurrencyFormatter()).build();
+		tvbReserva.createColumn("Valor").bindToProperty("valor").setPercentWidth(10).format(FormatterHelper.getDefaultValueFormatterToMoney()).build();
 		tvbReserva.createColumn("Observações").setPercentWidth(40).bindToProperty("observacoes").format(new NullStringValueFormatter()).build();
 		
 		tvbReserva.setInput(((Imovel)value.getValue()).getReservas());
@@ -854,7 +912,8 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		tvbComodo = new TableViewerBuilder(composite);
 		
 		tvbComodo.createColumn("Cômodo").setPercentWidth(30).bindToProperty("tipoComodo.nome").build();
-		tvbComodo.createColumn("Descrição").setPercentWidth(70).bindToProperty("descricao").build();
+		tvbComodo.createColumn("Quantidade").setPercentWidth(10).bindToProperty("quantidade").build();
+		tvbComodo.createColumn("Descrição").setPercentWidth(60).bindToProperty("descricao").build();
 		
 		tvbComodo.setInput(((Imovel)value.getValue()).getComodos());
 		
@@ -866,8 +925,8 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 	private void criarTabelaFeedback(Composite composite){
 		tvbFeedbacks = new TableViewerBuilder(composite);
 		
-		tvbFeedbacks.createColumn("Data da Visita").setPercentWidth(10).bindToProperty("data").format(Formatter.forDate(new SimpleDateFormat("dd/MM/yyyy hh:mm"))).build();
-		tvbFeedbacks.createColumn("Funcionário").setPercentWidth(15).bindToProperty("funcionario.nome").build();
+		tvbFeedbacks.createColumn("Data da Visita").setPercentWidth(10).bindToProperty("data").format(new DateTimeStringValueFormatter()).build();
+		tvbFeedbacks.createColumn("Funcionário").setPercentWidth(15).bindToProperty("funcionario.nome").format(new NullStringValueFormatter()).build();
 		tvbFeedbacks.createColumn("Cliente").setPercentWidth(15).bindToProperty("cliente.nome").build();
 		tvbFeedbacks.createColumn("Observações").setPercentWidth(60).bindToProperty("observacoes").build();
 		
@@ -895,21 +954,63 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		WidgetHelper.createMenuItemAlterar(menu, valueProposta, propostaXViewer);
 		
 		MenuItem miContraProposta = new MenuItem(menu, SWT.BORDER);
-		miContraProposta.setText("Contra-proposta");
+		miContraProposta.setText("Contraproposta");
 		miContraProposta.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				Proposta propostaSelecionada = (Proposta) SelectionHelper.getObject(propostaXViewer.getSelection());
 				
-				if(propostaSelecionada != null && propostaSelecionada.getContraProposta() != null){
-					DialogHelper.openWarning("A proposta selecionada já possui uma contra-proposta.");
+				if(propostaSelecionada == null)
+					return;
+				
+				if(propostaSelecionada.getContraProposta() != null){
+					DialogHelper.openWarning("A proposta selecionada já possui uma contraproposta.");
+					return;
+				}
+				
+				if(propostaSelecionada.getStatus() != null){
+					DialogHelper.openWarning("A proposta já foi fechada, para realizar uma contraproposta é preciso que ela seja aberta.");
 					return;
 				}
 				
 				ContraPropostaDialog dialog = new ContraPropostaDialog(ShellHelper.getActiveShell(), propostaSelecionada);
 				if(dialog.open() == IDialogConstants.OK_ID){
-					propostaXViewer.refresh();
+					propostaXViewer.setInput(getCurrentObject().getPropostas());
 				}
+			}
+		});
+		
+		MenuItem finalizarProposta = new MenuItem(menu, SWT.BORDER);
+		finalizarProposta.setText("Fechar/Reabrir proposta");
+		finalizarProposta.addSelectionListener(new SelectionAdapter() {
+			@Override
+			public void widgetSelected(SelectionEvent e) {
+				Proposta propostaSelecionada = (Proposta) SelectionHelper.getObject(propostaXViewer.getSelection());
+				
+				if(propostaSelecionada == null)
+					return;
+				
+				if(propostaSelecionada.getContraProposta() != null){
+					DialogHelper.openWarning("A proposta selecionada possui uma contraproposta.");
+					return;
+				}
+				
+				if(propostaSelecionada.getStatus() == null){
+					new FinalizarPropostaDialog(ShellHelper.getActiveShell(), propostaSelecionada).open();
+				} else {
+					if(DialogHelper.openConfirmation("Deseja reabrir a proposta ? ")){
+						propostaSelecionada.setStatus(null);
+						propostaSelecionada.setDataFechamento(null);
+
+						try {
+							new PropostaService().salvar(propostaSelecionada);
+						} catch (Exception e1) {
+							log.error("Erro ao reabrir proposta.", e1);
+						}
+					}
+				}
+				
+				propostaXViewer.setInput(getCurrentObject().getPropostas());
 			}
 		});
 		
@@ -919,13 +1020,13 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 	private void criarTabelaLocacoes(Composite composite) {
 		tvbLocacao = new TableViewerBuilder(composite);
 		
-		tvbLocacao.createColumn("Locatario").setPercentWidth(10).bindToProperty("cliente.nome").build();
+		tvbLocacao.createColumn("Locatário").setPercentWidth(10).bindToProperty("cliente.nome").build();
 		tvbLocacao.createColumn("Fiador").setPercentWidth(10).bindToProperty("fiador.nome").build();
 		tvbLocacao.createColumn("Corretor").setPercentWidth(10).bindToProperty("funcionario.nome").build();
-		tvbLocacao.createColumn("Valor").setPercentWidth(10).format(FormatterHelper.getCurrencyFormatter()).bindToProperty("valor").build();
+		tvbLocacao.createColumn("Valor").setPercentWidth(10).format(FormatterHelper.getDefaultValueFormatterToMoney()).bindToProperty("valor").build();
 		tvbLocacao.createColumn("Data").setPercentWidth(10).format(new DateStringValueFormatter()).bindToProperty("dataAssinaturaContrato").build();
-		tvbLocacao.createColumn("Ducação (meses)").setPercentWidth(10).bindToProperty("duracao").build();
-//		tvbLocacao.createColumn("Reajuste").setPercentWidth(10).bindToProperty("reajuste").build();
+		tvbLocacao.createColumn("Data de Vencimento").setPercentWidth(10).bindToProperty("dataVencimento").format(new DateStringValueFormatter()).build();
+		tvbLocacao.createColumn("Reajuste").setPercentWidth(10).bindToProperty("reajuste").build();
 		
 		tvbLocacao.setInput(new AluguelService().findByImovel(getCurrentObject()));
 		tvbLocacao.getTableViewer().addDoubleClickListener(new IDoubleClickListener() {
@@ -938,7 +1039,7 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 				try {
 					PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage().openEditor(ei, AluguelEditor.ID);
 				} catch (PartInitException e) {
-					log.error("Erro ao abrir tela de aluguel.", e);
+					log.error("Erro ao abrir tela de locação.", e);
 				}
 			}
 		});
@@ -947,7 +1048,15 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 	}
 	
 	private void addContratoPrestacaoServico() {
-		((ContratoPrestacaoServico)valueContrato.getValue()).setCliente(getCurrentObject().getProprietario());
+		ContratoPrestacaoServico contratoPrestacaoServico = (ContratoPrestacaoServico)valueContrato.getValue();
+		
+		if(DateHelper.zerarHoraMinutos(contratoPrestacaoServico.getDataInicio()).compareTo(DateHelper.zerarHoraMinutos(contratoPrestacaoServico.getDataVencimento())) > 0){
+			DialogHelper.openWarning("A data do contrato não pode ser maior que a data de vencimento.");
+			return;
+		}
+			
+		
+		contratoPrestacaoServico.setCliente(getCurrentObject().getProprietario());
 		addItens(new ContratoPrestacaoServicoService(), valueContrato, tvContratosPrestacaoServico, getCurrentObject().getContratos());
 	}
 	
@@ -956,7 +1065,8 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 	}
 	
 	private void addProposta() {
-		addItens(new PropostaService(), valueProposta, propostaXViewer, getCurrentObject().getPropostas());
+		addItens(new PropostaService(), valueProposta, propostaXViewer, getCurrentObject().getPropostas(), false);
+		propostaXViewer.setInput(getCurrentObject().getPropostas());
 	}
 	
 	private void addComodo() {
@@ -967,14 +1077,62 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		addItens(new FeedbackService(), valueFeedback, tvFeedbacks, getCurrentObject().getFeedbacks());
 	}
 	
-	private void addReserva() {
-		addItens(new ReservaService(), valueReserva, tvReservas, getCurrentObject().getReservas());
+	private void addReserva() throws ValidationException {
+		ReservaService reservaService = new ReservaService();
+		Reserva reserva = (Reserva) valueReserva.getValue();
+		
+		if(reserva.getDataReserva().compareTo(reserva.getDataVencimento()) > 0)
+			throw new ValidationException("A data de vencimento não pode ser menor que a data da reserva");
+
+		List<Reserva> intersecao = reservaService.findIntersecao(reserva);
+		for(Reserva i : intersecao)
+			if(!i.equals(reserva))
+				throw new ValidationException("Já existe uma reserva entre que acaba ou começa entre os mesmos dias.");
+		
+		addItens(reservaService, valueReserva, tvReservas, getCurrentObject().getReservas());
 	}
 	
 	@Override
 	public void saveCurrentObject(GenericService<Imovel> service) {
-		if(validarComMensagem(getCurrentObject().getEndereco())){
+
+		boolean isNewObject = getCurrentObject().getId() == null;
+		
+		if(validarComMensagem(getCurrentObject().getEndereco()) && validarComMensagem(getCurrentObject())){
 			super.saveCurrentObject(service);
+			
+			if(isNewObject){
+				List<TipoComodo> tiposComodo = new TipoComodoService().findByTipoComodoAndSelecionadoIsTrue(getCurrentObject().getTipo());
+
+				if(tiposComodo == null || tiposComodo.isEmpty())
+					return;
+				
+				ComodoService comodoService = new ComodoService();
+				List<Comodo> comodos = Lists.newArrayList();
+				
+				for(TipoComodo tipoComodo : tiposComodo){
+					Comodo comodo = new Comodo(getCurrentObject());
+					comodo.setDescricao("");
+					comodo.setTipoComodo(tipoComodo);
+					comodo.setQuantidade(1);
+					
+					comodos.add(comodo);
+				}
+				
+				try {
+					comodoService.salvar(comodos);
+					
+					Imovel imovel = getCurrentObject();
+					
+					value.setValue(null);
+					value.setValue(imovel);
+
+					tvComodos.setInput(imovel.getComodos());
+					
+					tfImovel.setSelection(1);
+				} catch (Exception e) {
+					log.error("Erro ao salvar cômodos do imóvel.", e);
+				}
+			}
 		}
 	}
 	
@@ -1051,13 +1209,17 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		IObservableValue valueComodoTipoComodoObserveDetailValue = PojoProperties.value(Comodo.class, "tipoComodo", TipoComodo.class).observeDetail(valueComodo);
 		bindingContext.bindValue(observeTextText_26ObserveWidget, valueComodoTipoComodoObserveDetailValue, null, null);
 		//
+		IObservableValue observeTextTxtQuantidadeComodosObserveWidget = WidgetProperties.text(SWT.Modify).observe(txtQuantidadeComodos);
+		IObservableValue valueComodoQuantidadeObserveDetailValue = PojoProperties.value(Comodo.class, "quantidade", Integer.class).observeDetail(valueComodo);
+		bindingContext.bindValue(observeTextTxtQuantidadeComodosObserveWidget, valueComodoQuantidadeObserveDetailValue, UVSHelper.uvsStringToInteger(), UVSHelper.uvsIntegerToString());
+		//
 		IObservableValue observeTextTxtDescrioObserveWidget = WidgetProperties.text(SWT.Modify).observe(txtDescrio);
 		IObservableValue valueComodoDescricaoObserveDetailValue = PojoProperties.value(Comodo.class, "descricao", String.class).observeDetail(valueComodo);
 		bindingContext.bindValue(observeTextTxtDescrioObserveWidget, valueComodoDescricaoObserveDetailValue, null, null);
 		//
-		IObservableValue observeTextText_32ObserveWidget = WidgetProperties.text(SWT.Modify).observe(text_32);
+		IObservableValue observeTextText_32ObserveWidget = WidgetProperties.text(SWT.Modify).observe(txtDataFeedback);
 		IObservableValue valueFeedbackDataObserveDetailValue = PojoProperties.value(Feedback.class, "data", Date.class).observeDetail(valueFeedback);
-		bindingContext.bindValue(observeTextText_32ObserveWidget, valueFeedbackDataObserveDetailValue, UVSHelper.uvsStringToDate(), UVSHelper.uvsDateToString());
+		bindingContext.bindValue(observeTextText_32ObserveWidget, valueFeedbackDataObserveDetailValue, UVSHelper.uvsStringToDateTimeStamp(), UVSHelper.uvsDateTimeStampToString());
 		//
 		IObservableValue observeTextText_12ObserveWidget = WidgetProperties.text(SWT.NONE).observe(text_12);
 		IObservableValue valueFeedbackFuncionarionomeObserveDetailValue = PojoProperties.value(Feedback.class, "funcionario.nome", String.class).observeDetail(valueFeedback);
@@ -1133,6 +1295,10 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		IObservableValue valueContratoFuncionarionomeObserveDetailValue = PojoProperties.value(ContratoPrestacaoServico.class, "funcionario.nome", String.class).observeDetail(valueContrato);
 		bindingContext.bindValue(observeTextText_10ObserveWidget, valueContratoFuncionarionomeObserveDetailValue, null, null);
 		//
+		IObservableValue observeModeloContratoObserveWidget = WidgetProperties.text(SWT.NONE).observe(txtModeloContratoPrestacaoServico);
+		IObservableValue valueContratoModeloContratoObserveDetailValue = PojoProperties.value(ContratoPrestacaoServico.class, "modeloContrato.nome", String.class).observeDetail(valueContrato);
+		bindingContext.bindValue(observeModeloContratoObserveWidget, valueContratoModeloContratoObserveDetailValue, null, null);
+		//
 		IObservableValue observeTextTextObserveWidget = WidgetProperties.text(SWT.Modify).observe(text);
 		IObservableValue valueContratoDataInicioObserveDetailValue = PojoProperties.value(ContratoPrestacaoServico.class, "dataInicio", Date.class).observeDetail(valueContrato);
 		bindingContext.bindValue(observeTextTextObserveWidget, valueContratoDataInicioObserveDetailValue, UVSHelper.uvsStringToDate(), UVSHelper.uvsDateToString());
@@ -1141,8 +1307,8 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		IObservableValue valueContratoDataVencimentoObserveDetailValue = PojoProperties.value(ContratoPrestacaoServico.class, "dataVencimento", Date.class).observeDetail(valueContrato);
 		bindingContext.bindValue(observeTextText_16ObserveWidget, valueContratoDataVencimentoObserveDetailValue, UVSHelper.uvsStringToDate(), UVSHelper.uvsDateToString());
 		//
-		IObservableValue observeTextText_4ObserveWidget = WidgetProperties.text(SWT.Modify).observe(text_4);
-		IObservableValue valueContratoValorObserveDetailValue = PojoProperties.value(ContratoPrestacaoServico.class, "valor", BigDecimal.class).observeDetail(valueContrato);
+		IObservableValue observeTextText_4ObserveWidget = WidgetProperties.text(SWT.Modify).observe(txtValorImovel);
+		IObservableValue valueContratoValorObserveDetailValue = PojoProperties.value(ContratoPrestacaoServico.class, "valorImovel", BigDecimal.class).observeDetail(valueContrato);
 		bindingContext.bindValue(observeTextText_4ObserveWidget, valueContratoValorObserveDetailValue, null, null);
 		//
 		IObservableValue observeSelectionBtnDivulgarObserveWidget = WidgetProperties.selection().observe(btnDivulgar);
@@ -1152,7 +1318,7 @@ public class ImovelEditor extends GenericEditor<Imovel>{
 		for(CTabItem c : tfImovel.getItems()){
 			if(c.equals(tbtmEndereo))
 				continue;
-			bindingContext.bindValue(WidgetProperties.enabled().observe(c.getControl()), PojoProperties.value(Imovel.class, "id", Long.class).observeDetail(value));
+			bindingContext.bindValue(WidgetProperties.enabled().observe(c.getControl()), PojoProperties.value(Imovel.class, "id", Long.class).observeDetail(value), null, UVSHelper.uvsLongIsNull());
 		}
 		//
 		return bindingContext;

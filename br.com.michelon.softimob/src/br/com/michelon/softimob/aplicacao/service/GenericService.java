@@ -61,6 +61,10 @@ public class GenericService<T> {
 		crudRepository.delete(registro);
 	}
 	
+	public List<T> findAtivados(){
+		return findAll();
+	}
+	
 	public List<T> findAll(){
 		return (List<T>) crudRepository.findAll();
 	}
@@ -80,5 +84,5 @@ public class GenericService<T> {
 	public <D> D getDaoImpl(Class<D> daoImpl){
 		return SpringUtils.getContext().getBean(daoImpl);
 	}
-	
+
 }

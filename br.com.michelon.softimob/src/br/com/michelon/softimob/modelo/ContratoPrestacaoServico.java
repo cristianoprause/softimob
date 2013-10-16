@@ -17,6 +17,7 @@ import javax.validation.constraints.NotNull;
 
 import org.eclipse.ui.IEditorInput;
 
+import br.com.michelon.softimob.aplicacao.annotation.WildCard;
 import br.com.michelon.softimob.aplicacao.editorInput.ImovelEditorInput;
 import br.com.michelon.softimob.aplicacao.service.ContratoPrestacaoServicoService;
 import br.com.michelon.softimob.aplicacao.service.GenericService;
@@ -47,8 +48,9 @@ public class ContratoPrestacaoServico implements Pendencia{
 	@Id @GeneratedValue
 	private Long id;
 	
+	@NotNull(message = "Informe o valor do imóvel.")
 	@Column(precision = 14, scale = 2)
-	private BigDecimal valor = BigDecimal.ZERO;
+	private BigDecimal valorImovel;
 	
 	@NotNull(message="Informe o tipo do contrato.")
 	@Column(nullable=false)
@@ -63,18 +65,15 @@ public class ContratoPrestacaoServico implements Pendencia{
 	private Boolean divulgar = true;
 	
 	@NotNull(message="Informe a data que foi feito o contrato.")
-	@Temporal(TemporalType.TIMESTAMP)
+	@Temporal(TemporalType.DATE)
 	private Date dataInicio = new Date();
 	
 	@NotNull(message="Informe a data de vencimento do contrato.")
-	@Temporal(TemporalType.TIMESTAMP)
+	@Temporal(TemporalType.DATE)
 	private Date dataVencimento = new Date();
 	
 	@ManyToOne
 	private Funcionario funcionario;
-	
-	@SuppressWarnings("unused")
-	private ContratoPrestacaoServico() {}
 	
 	@ManyToOne(optional = false)
 	private Cliente cliente;
@@ -85,8 +84,19 @@ public class ContratoPrestacaoServico implements Pendencia{
 	@Temporal(TemporalType.DATE)
 	private Date dataFechamento;
 	
+	@NotNull(message = "Selecione o modelo de contrato.")
+	@ManyToOne(optional = false)
+	private ModeloContrato modeloContrato;
+	
+	@SuppressWarnings("unused")
+	private ContratoPrestacaoServico() {}
+	
 	public ContratoPrestacaoServico(Imovel imovel){
 		this.imovel = imovel;
+		
+		ParametrosEmpresa params = ParametrosEmpresa.getInstance();
+		if(params != null)
+			modeloContrato = params.getContratoPrestacaoServico();
 	}
 	
 	public Long getId() {
@@ -113,15 +123,18 @@ public class ContratoPrestacaoServico implements Pendencia{
 		this.imovel = imovel;
 	}
 
-	public void setValor(BigDecimal valor) {
-		this.valor = valor;
-	}
-
 	@Override
 	public Date getDataGeracao() {
 		return dataInicio;
 	}
 
+	public ModeloContrato getModeloContrato() {
+		return modeloContrato;
+	}
+	
+	public void setModeloContrato(ModeloContrato modeloContrato) {
+		this.modeloContrato = modeloContrato;
+	}
 	
 	@Override
 	public Date getDataVencimento() {
@@ -135,10 +148,17 @@ public class ContratoPrestacaoServico implements Pendencia{
 
 	@Override
 	public String getDescricao() {
-		// TODO Auto-generated method stub
-		return null;
+		return String.format("Contrato de prestação de serviço do %s", getImovel().getDescricao());
 	}
 
+	public BigDecimal getValorImovel() {
+		return valorImovel;
+	}
+	
+	public void setValorImovel(BigDecimal valorImovel) {
+		this.valorImovel = valorImovel;
+	}
+	
 	@Override
 	public String getIdEditor() {
 		return ImovelEditor.ID;
@@ -153,7 +173,7 @@ public class ContratoPrestacaoServico implements Pendencia{
 
 	@Override
 	public BigDecimal getValor() {
-		return this.valor;
+		return null;
 	}
 
 	public Boolean getResolvido() {
@@ -205,6 +225,11 @@ public class ContratoPrestacaoServico implements Pendencia{
 		this.cliente = cliente;
 	}
 	
+	@Override
+	public boolean confirmarFinalizarPendencia() {
+		return true;
+	}
+	
 	private transient static ContratoPrestacaoServicoService c;
 	
 	@Override
@@ -216,13 +241,18 @@ public class ContratoPrestacaoServico implements Pendencia{
 	
 	@Override
 	public String toString() {
-		return imovel.toString();
+		return imovel.getDescricao();
 	}
 
 	@Override
 	public void finalizarPendencia() throws Exception {
 		setResolvido(true);
 		((ContratoPrestacaoServicoService)getService()).salvar(this);
+	}
+	
+	@WildCard
+	public ParametrosEmpresa getParametros(){
+		return ParametrosEmpresa.getInstance();
 	}
 	
 	@Override

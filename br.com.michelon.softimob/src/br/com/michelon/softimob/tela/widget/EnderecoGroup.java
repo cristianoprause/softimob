@@ -1,5 +1,7 @@
 package br.com.michelon.softimob.tela.widget;
 
+import java.util.List;
+
 import org.apache.log4j.Logger;
 import org.eclipse.core.databinding.DataBindingContext;
 import org.eclipse.core.databinding.beans.PojoProperties;
@@ -33,6 +35,7 @@ import br.com.michelon.softimob.aplicacao.helper.NumberHelper;
 import br.com.michelon.softimob.aplicacao.helper.SelectionHelper;
 import br.com.michelon.softimob.aplicacao.service.BairroService;
 import br.com.michelon.softimob.aplicacao.service.CidadeService;
+import br.com.michelon.softimob.aplicacao.service.EnderecoService;
 import br.com.michelon.softimob.aplicacao.service.EstadoService;
 import br.com.michelon.softimob.aplicacao.service.RuaService;
 import br.com.michelon.softimob.modelo.Bairro;
@@ -55,11 +58,14 @@ public class EnderecoGroup {
 
 	private WritableValue value = WritableValue.withValueType(Endereco.class);
 
+	private EnderecoService enderecoService = new EnderecoService();
 	private EstadoService estadoService = new EstadoService();
 	private CidadeService cidadeService = new CidadeService();
 	private BairroService bairroService = new BairroService();
 	private RuaService ruaService = new RuaService();
 	private ComboViewer cvUF;
+
+	private DataBindingContext context;
 
 	public EnderecoGroup(Composite parent, Endereco endereco, int style) {
 		createComponents(parent, style);
@@ -85,15 +91,16 @@ public class EnderecoGroup {
 		gd_text_1.widthHint = 124;
 		txtCep.setLayoutData(gd_text_1);
 		txtCep.addFocusListener(new FocusAdapter() {
+			
 			@Override
 			public void focusLost(FocusEvent e) {
 				Text txt = (Text) e.widget;
 				String txtCep = NumberHelper.extractNumbers(txt.getText());
-				
+				Rua rua = null;
 				try{
 					CEP cep = CEPServiceFactory.getCEPService().obtemPorNumeroCEP(txtCep);
 
-					Rua rua = cadastrarCep(cep);
+					rua = cadastrarCep(cep);
 					if(rua != null)
 						selecionarRua(rua);
 				}catch(CEPNaoEncontradoException ce){
@@ -102,6 +109,15 @@ public class EnderecoGroup {
 					log.error("Não houve exito em conectar-se com o serviço dos correios.");
 				}catch(Exception e1){
 					log.error("Erro ao buscar CEP.", e1);
+				} 
+				
+				if(rua == null) {
+					List<Endereco> enderecos = enderecoService.findByCep(txt.getText());
+					if(enderecos != null && !enderecos.isEmpty()){
+						Endereco end = enderecos.get(0);
+						if(end.getRua() != null)
+							selecionarRua(end.getRua());
+					}
 				}
 			}
 		});
@@ -126,6 +142,8 @@ public class EnderecoGroup {
 					cvCidades.setInput(estado.getCidades());
 					cvBairros.setInput(null);
 					cvRuas.setInput(null);
+					
+					limparCidade();
 				}
 			}
 		});
@@ -148,6 +166,8 @@ public class EnderecoGroup {
 				if(cidade != null){
 					cvBairros.setInput(cidade.getBairros());
 					cvRuas.setInput(null);
+					
+					limparBairro();
 				}
 			}
 		});
@@ -168,6 +188,7 @@ public class EnderecoGroup {
 				
 				if(bairro != null){
 					cvRuas.setInput(bairro.getRuas());
+					limparRua();
 				}
 			}
 		});
@@ -208,7 +229,11 @@ public class EnderecoGroup {
 		txtComplemento.setLayoutData(new GridData(SWT.FILL, SWT.CENTER, true, false, 1, 1));
 		new Label(control, SWT.NONE);
 
-		initDataBindings();
+		context = initDataBindings();
+	}
+	
+	private void updateTargets(){
+		context.updateTargets();
 	}
 
 	protected Rua cadastrarCep(CEP cep) {
@@ -216,7 +241,7 @@ public class EnderecoGroup {
 			Estado estado = estadoService.findByUf(cep.getUf());
 			if(estado == null){
 				estado = new Estado();
-				estado.setNome(cep.getUf()+ "a");
+				estado.setNome(cep.getUf());
 				estado.setUf(cep.getUf());
 				estadoService.salvar(estado);
 			}
@@ -320,7 +345,12 @@ public class EnderecoGroup {
 	private void selecionarRua(Rua rua) {
 		selecionarBairro(rua.getBairro());
 		cvRuas.setInput(ruaService.findRuasByBairro(rua.getBairro()));
-		cvRuas.setSelection(new StructuredSelection(rua));
+
+		if(getEndereco() == null)
+			return ;
+		
+		getEndereco().setRua(rua);
+		updateTargets();
 	}
 
 	private void selecionarBairro(Bairro bairro) {
@@ -338,5 +368,24 @@ public class EnderecoGroup {
 	private void selecionarEstado(Estado estado) {
 		cvUF.setInput(estadoService.findAll());
 		cvUF.setSelection(new StructuredSelection(estado));
+	}
+	
+	private void limparCidade(){
+		if(getEndereco() != null){
+			limparBairro();
+			cvCidades.setSelection(null);
+		}
+	}
+	
+	private void limparBairro(){
+		if(getEndereco() != null){
+			limparRua();
+			cvBairros.setSelection(null);
+		}
+	}
+	
+	private void limparRua(){
+		if(getEndereco() != null)
+			getEndereco().setRua(null);
 	}
 }

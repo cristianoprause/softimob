@@ -15,6 +15,7 @@ import javax.persistence.MappedSuperclass;
 import javax.persistence.OneToOne;
 import javax.persistence.Temporal;
 import javax.persistence.TemporalType;
+import javax.validation.constraints.NotNull;
 
 import org.hibernate.validator.constraints.Email;
 import org.hibernate.validator.constraints.Length;
@@ -36,18 +37,19 @@ public abstract class Comissionado implements Serializable{
 	@NotEmpty(message="O nome não pode ser vazio")
 	private String nome;
 	
-	@Column(length=13, nullable = false)
-	@Length(max = 13, min = 13, message = "O telefone deve ter 13 caracteres.")
+	@Column(length=10, nullable = false)
+	@Length(max = 10, min = 10, message = "O telefone deve ter 10 caracteres.")
+	@NotNull(message = "O telefone deve ter 13 caracteres.")
 	private String telefone;
 	
-	@Column(length=13)
+	@Column(length=10)
 	private String celular;
 	
 	@Column
 	@Email(message="Não é um e-mail válido.")
 	private String email;
 
-	@Temporal(TemporalType.TIMESTAMP)
+	@Temporal(TemporalType.DATE)
 	@Column(columnDefinition="TIMESTAMP WITH TIME ZONE")
 	private Date dataNascimento;
 	
@@ -57,6 +59,18 @@ public abstract class Comissionado implements Serializable{
 	
 	@OneToOne(cascade = CascadeType.ALL, orphanRemoval = true, optional=false)
 	private Endereco endereco = new Endereco();
+	
+	@OneToOne(cascade=CascadeType.ALL, orphanRemoval = true)
+	@br.com.michelon.softimob.aplicacao.annotation.Log
+	private Log log = new Log();
+	
+	public Log getLog() {
+		return log;
+	}
+	
+	public void setLog(Log log) {
+		this.log = log;
+	}
 	
 	public Long getId() {
 		return id;

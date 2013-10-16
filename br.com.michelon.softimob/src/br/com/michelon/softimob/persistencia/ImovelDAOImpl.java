@@ -42,9 +42,9 @@ public class ImovelDAOImpl {
 		if(m.getMetroMax() != null)
 			sb.append("AND :metroMax >= i.metragem ");
 		if(m.getValMin() != null)
-			sb.append("AND :valMin <= c.valor ");
+			sb.append("AND :valMin <= c.valorImovel ");
 		if(m.getValMax() != null)
-			sb.append("AND :valMax >= c.valor ");
+			sb.append("AND :valMax >= c.valorImovel ");
 		if(m.getAngariador() != null)
 			sb.append("AND :angariador = i.angariador ");
 		if(m.getProprietario() != null)
@@ -58,12 +58,17 @@ public class ImovelDAOImpl {
 		if(m.getObservacoes() != null)
 			sb.append("AND i.observacoes like CONCAT('%', :observacoes, '%') ");
 		if(!(m.isReservado() && m.isNaoReservado())){
-			sb.append("AND (((:naoReservado = true AND c is null)) ");
-			sb.append("OR ((:reservado = true AND c is not null AND c.dataVencimento >= :dataHoje))) ");
+			sb.append("AND (((:naoReservado = true AND (r.id is null OR (SELECT count(r1) FROM Reserva r1 WHERE r1.imovel = i AND r1.dataReserva <= :dataHoje AND :dataHoje <= r1.dataVencimento) = 0)))");
+			sb.append("OR ((:reservado = true AND r.id is not null AND r.dataReserva <= :dataHoje AND :dataHoje <= r.dataVencimento))) ");
 		}
 
 		for(int p = 0 ; p < comodos.size(); p++){
-			sb.append(String.format("AND c%s.tipoComodo = :tp%s AND c%s.descricao = :comDescricao%s ", p, p, p, p));
+			Comodo comodo = comodos.get(p);
+			sb.append(String.format("AND c%s.tipoComodo = :tp%s ", p, p));
+			if(comodo.getDescricao() != null)
+				sb.append(String.format("AND c%s.descricao LIKE :comDescricao%s ", p, p));
+			if(comodo.getQuantidade() != null)
+				sb.append(String.format("AND c%s.quantidade = :comQuantidade%s ", p, p));
 		}
 		
 		sb.append("AND ((:isTodos = true) ");
@@ -109,7 +114,10 @@ public class ImovelDAOImpl {
 			for(int p = 0 ; p < comodos.size(); p++){
 				Comodo c = comodos.get(p);
 				typedQuery.setParameter(String.format("tp%s", p), c.getTipoComodo());
-				typedQuery.setParameter(String.format("comDescricao%s", p), c.getDescricao());				
+				if(c.getDescricao() != null)
+					typedQuery.setParameter(String.format("comDescricao%s", p), "%" + c.getDescricao() + "%");
+				if(c.getQuantidade() != null)
+					typedQuery.setParameter(String.format("comQuantidade%s", p), c.getQuantidade());	
 			}
 		}
 		
@@ -125,4 +133,38 @@ public class ImovelDAOImpl {
 		return typedQuery.getResultList();
 	}
 
+	public List<Imovel> buscarImoveisVender() {
+		return buscarImoveisPorContrato(TipoContrato.VENDA);
+	}
+
+	public List<Imovel> buscarImoveisAluguel() {
+		return buscarImoveisPorContrato(TipoContrato.LOCACAO);
+	}
+
+	public List<Imovel> buscarImoveisVenderAlugar() {
+		return buscarImoveisPorContrato(TipoContrato.LOCACAOVENDA);
+	}
+
+	public List<Imovel> buscarImoveisPorContrato(TipoContrato contrato){
+		StringBuilder sb = new StringBuilder();
+		
+		sb.append("SELECT i FROM Imovel i ");
+		sb.append("LEFT JOIN ContratoPrestacaoServico c on c.imovel = i ");
+		sb.append("WHERE :dataHoje between c.dataInicio and c.dataVencimento ");
+		
+		if(!contrato.equals(TipoContrato.LOCACAOVENDA))
+			sb.append("AND (c.tipo = :tipo OR c.tipo = :tipoLocacaoVenda) ");
+		
+		TypedQuery<Imovel> queryImoveis = em.createQuery(sb.toString(), Imovel.class);
+		
+		if(!contrato.equals(TipoContrato.LOCACAOVENDA)){
+			queryImoveis.setParameter("tipo", contrato);
+			queryImoveis.setParameter("tipoLocacaoVenda", TipoContrato.LOCACAOVENDA);
+		}
+		
+		queryImoveis.setParameter("dataHoje", new Date());
+		
+		return queryImoveis.getResultList();
+	}
+	
 }

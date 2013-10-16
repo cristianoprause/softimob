@@ -11,7 +11,7 @@ public class Comissao extends ContaPagarReceber{
 	@ManyToOne
 	private Comissionado comissionado;
 	
-	@ManyToOne
+	@ManyToOne(optional = false)
 	private VendaAluguel vendaAluguel;
 	
 	@SuppressWarnings("unused")
@@ -46,7 +46,5 @@ public class Comissao extends ContaPagarReceber{
 	public void setVendaAluguel(VendaAluguel vendaAluguel) {
 		this.vendaAluguel = vendaAluguel;
 	}
-
-	
 	
 }

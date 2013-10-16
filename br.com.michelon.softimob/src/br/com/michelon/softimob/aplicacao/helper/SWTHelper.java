@@ -3,9 +3,13 @@ package br.com.michelon.softimob.aplicacao.helper;
 import org.apache.log4j.Logger;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jface.action.IStatusLineManager;
+import org.eclipse.swt.graphics.Color;
 import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.widgets.Display;
 import org.eclipse.wb.swt.ImageRepository;
+import org.eclipse.wb.swt.SWTResourceManager;
+
+import br.com.michelon.softimob.tela.widget.SucessfulContributionItem;
 
 public class SWTHelper {
 
@@ -14,6 +18,10 @@ public class SWTHelper {
 	private static final int TIME = 1000;
 	private static final int INTERVAL = 50;
 
+	public static void setSuccesfulMessageInBottomScreen(String message) {
+		SucessfulContributionItem.getInstance().setSucessfulMessage(message);
+	}
+	
 	public static void setSuccesfulMessageInBottomScreen(String message, IStatusLineManager lineManager) {
 		setMessageInBottonScreen(message, false, ImageRepository.SUCCESS_16.getImage(), lineManager);
 	}
@@ -81,4 +89,9 @@ public class SWTHelper {
 			}
 		}).start();
 	}
+	
+	public static Color getYellowColor(){
+		return SWTResourceManager.getColor(255, 153, 0);
+	}
+	
 }

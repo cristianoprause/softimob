@@ -1,6 +1,7 @@
 package br.com.michelon.softimob.tela.view;
 
-import org.eclipse.jface.dialogs.InputDialog;
+import java.util.List;
+
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.SashForm;
 import org.eclipse.swt.events.ModifyEvent;
@@ -21,12 +22,12 @@ import br.com.michelon.softimob.aplicacao.map.GMap;
 import br.com.michelon.softimob.aplicacao.map.LatLng;
 import br.com.michelon.softimob.aplicacao.map.MapAdapter;
 import br.com.michelon.softimob.modelo.Endereco;
+import br.com.michelon.softimob.modelo.Imovel;
 
 public class ImovelMapView extends ViewPart {
 
 	public static final String ID = "br.com.michelon.softimob.tela.view.ImovelMapView"; //$NON-NLS-1$
 
-	static final private String INIT_CENTER = "33.0,5.0";
 	static final private int INIT_TYPE = GMap.TYPE_HYBRID;
 	private GMap gmap = null;
 	private Composite controls;
@@ -57,18 +58,12 @@ public class ImovelMapView extends ViewPart {
 		SashForm sash = new SashForm(cp, SWT.VERTICAL);
 		createMap(sash);
 		controls = new Composite(sash, SWT.BORDER);
-//		createCenterControl(controls);
-//		createZoomControl(controls);
-//		createMapTypeControl(controls);
 		createAddressControl(controls);
-		createMarkerControl(controls);
 		sash.setWeights(new int[] { 8, 1 });
 	}
 
 	private void createMap(Composite parent) {
 		gmap = new GMap(parent, SWT.NONE);
-
-		gmap.setCenter(stringToLatLng(INIT_CENTER));
 
 		gmap.setType(INIT_TYPE);
 	}
@@ -78,7 +73,6 @@ public class ImovelMapView extends ViewPart {
 		new Label(parent, SWT.None).setText("Localização:");
 		location = new Text(parent, SWT.BORDER);
 		location.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false));
-		location.setText(INIT_CENTER);
 		location.setFont(new Font(parent.getDisplay(), "Arial", 9, SWT.NORMAL));
 		location.addModifyListener(new ModifyListener() {
 			public void modifyText(ModifyEvent event) {
@@ -117,7 +111,7 @@ public class ImovelMapView extends ViewPart {
 		Label label = new Label(parent, SWT.None);
 		label.setText("Endereço");
 		addr = new Text(parent, SWT.BORDER);
-		addr.setLayoutData(new GridData(SWT.FILL, SWT.TOP, true, false, 1, 1));
+		addr.setLayoutData(new GridData(SWT.FILL, SWT.FILL, true, false, 1, 1));
 		addr.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetDefaultSelected(SelectionEvent e) {
@@ -126,42 +120,12 @@ public class ImovelMapView extends ViewPart {
 		});
 		addr.setFont(new Font(parent.getDisplay(), "Arial", 9, SWT.NORMAL));
 		Button goToAddr = new Button(parent, SWT.PUSH);
-		goToAddr.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 1));
+		goToAddr.setLayoutData(new GridData(SWT.LEFT, SWT.FILL, true, false, 1, 1));
 		goToAddr.setText("Ir até");
 		goToAddr.addSelectionListener(new SelectionAdapter() {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				gmap.gotoAddress(addr.getText());
-			}
-		});
-//		Button resolveAddr = new Button(parent, SWT.PUSH);
-//		resolveAddr.setText("resolve");
-//		resolveAddr.addSelectionListener(new SelectionAdapter() {
-//			@Override
-//			public void widgetSelected(SelectionEvent e) {
-//				gmap.resolveAddress();
-//			}
-//		});
-//		gmap.addMapListener(new MapAdapter() {
-//			@Override
-//			public void addressResolved() {
-//				addr.setText(gmap.getAddress());
-//			}
-//		});
-	}
-
-	private void createMarkerControl(Composite parent) {
-		final InputDialog markerDialog = new InputDialog(parent.getShell(), "Marker Name", "Enter Name", null, null);
-		Button addMarker = new Button(parent, SWT.PUSH);
-		addMarker.setText("add Marker");
-		addMarker.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				markerDialog.open();
-				String result = markerDialog.getValue();
-				if (result != null && result.length() > 0) {
-					gmap.addMarker("teste", "karl guenther");
-				}
 			}
 		});
 	}
@@ -214,6 +178,10 @@ public class ImovelMapView extends ViewPart {
 	public void setEnderecoPadrao(Endereco endereco) {
 		gmap.setEnderecoPadrao(endereco.toString());
 		addr.setText(endereco.toString());
+	}
+
+	public void setMarkers(List<Imovel> imoveis) {
+		gmap.setMarkers(imoveis);
 	}
 
 }

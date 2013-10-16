@@ -50,6 +50,7 @@ import br.com.michelon.softimob.aplicacao.helper.SWTHelper;
 import br.com.michelon.softimob.aplicacao.helper.ShellHelper;
 import br.com.michelon.softimob.aplicacao.helper.ValidatorHelper;
 import br.com.michelon.softimob.aplicacao.service.GenericService;
+import br.com.michelon.softimob.modelo.Usuario;
 import br.com.michelon.softimob.tela.binding.updateValueStrategy.UVSHelper;
 
 public abstract class GenericEditor<T> extends EditorPart {
@@ -67,9 +68,15 @@ public abstract class GenericEditor<T> extends EditorPart {
 	private Label lblUsuarioCadastro;
 	private Label lblDataAlteracao;
 	private Label lblUsuarioAlteracao;
+	private boolean hasNovo;
 	
 	public GenericEditor(Class<T> clazz) {
+		this(clazz, true);
+	}
+	
+	public GenericEditor(Class<T> clazz, boolean hasNovo) {
 		mainClass = clazz;
+		this.hasNovo = hasNovo;
 		value = WritableValue.withValueType(mainClass);
 	}
 	
@@ -109,42 +116,36 @@ public abstract class GenericEditor<T> extends EditorPart {
 			@Override
 			public void widgetSelected(SelectionEvent e) {
 				saveCurrentObject(getService());
+				setFocus();
 			}
 		});
 		
-		Button btnNovo = new Button(cpOpcoes, SWT.NONE);
-		btnNovo.setImage(ImageRepository.NOVO_32.getImage());
-		GridData gd_btnNovo = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 3);
-		gd_btnNovo.widthHint = 80;
-		gd_btnNovo.heightHint = 50;
-		btnNovo.setLayoutData(gd_btnNovo);
-		formToolkit.adapt(btnNovo, true, true);
-		btnNovo.setText("Novo");
+		if(hasNovo){
+			Button btnNovo = new Button(cpOpcoes, SWT.NONE);
+			btnNovo.setImage(ImageRepository.NOVO_32.getImage());
+			GridData gd_btnNovo = new GridData(SWT.LEFT, SWT.CENTER, false, false, 1, 3);
+			gd_btnNovo.widthHint = 80;
+			gd_btnNovo.heightHint = 50;
+			btnNovo.setLayoutData(gd_btnNovo);
+			formToolkit.adapt(btnNovo, true, true);
+			btnNovo.setText("Novo");
+			
+			btnNovo.addSelectionListener(new SelectionAdapter() {
+				@Override
+				public void widgetSelected(SelectionEvent e) {
+					resetValue();
+					setFocus();
+				}
+			});
+		}
 		
-		btnNovo.addSelectionListener(new SelectionAdapter() {
-			@Override
-			public void widgetSelected(SelectionEvent e) {
-				resetValue();
-			}
-		});
-		
-		if(!valueHasLog()){
+		if(valueHasLog()){
 			Label label = new Label(cpOpcoes, SWT.NONE);
 			label.setLayoutData(new GridData(SWT.LEFT, SWT.CENTER, true, false, 1, 3));
 			formToolkit.adapt(label, true, true);
 
-			Label lblDataDeCadastro = new Label(cpOpcoes, SWT.NONE);
-			lblDataDeCadastro.setLayoutData(new GridData(SWT.LEFT, SWT.BOTTOM, false, false, 1, 1));
-			lblDataDeCadastro.setText("Última Alteração");
-			lblDataDeCadastro.setFont(SWTResourceManager.getFont("Segoe UI", 9, SWT.NORMAL));
-			
-			lblDataAlteracao = new Label(cpOpcoes, SWT.NONE);
-			lblDataAlteracao.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, false, true, 1, 1));
-			lblDataAlteracao.setText("");
-			lblDataAlteracao.setFont(SWTResourceManager.getFont("Segoe UI", 9, SWT.BOLD));
-			
 			Label lblNewLabel = new Label(cpOpcoes, SWT.NONE);
-			lblNewLabel.setLayoutData(new GridData(SWT.LEFT, SWT.BOTTOM, false, false, 1, 1));
+			lblNewLabel.setLayoutData(new GridData(SWT.RIGHT, SWT.BOTTOM, false, false, 1, 1));
 			lblNewLabel.setFont(SWTResourceManager.getFont("Segoe UI", 9, SWT.NORMAL));
 			lblNewLabel.setText("Usuário Cadastro");
 			
@@ -153,23 +154,32 @@ public abstract class GenericEditor<T> extends EditorPart {
 			gd_lblFulano.widthHint = 93;
 			lblUsuarioCadastro.setLayoutData(gd_lblFulano);
 			lblUsuarioCadastro.setFont(SWTResourceManager.getFont("Segoe UI", 9, SWT.BOLD));
-			lblUsuarioCadastro.setText("");
 			
 			Label lblNewLabel_1 = new Label(cpOpcoes, SWT.NONE);
-			lblNewLabel_1.setLayoutData(new GridData(SWT.LEFT, SWT.TOP, false, false, 1, 1));
+			lblNewLabel_1.setLayoutData(new GridData(SWT.RIGHT, SWT.TOP, false, false, 1, 1));
 			lblNewLabel_1.setFont(SWTResourceManager.getFont("Segoe UI", 9, SWT.NORMAL));
-			lblNewLabel_1.setText("Ultima Alteração");
+			lblNewLabel_1.setText("Usuário Alteração");
 			
 			lblUsuarioAlteracao = new Label(cpOpcoes, SWT.NONE);
 			lblUsuarioAlteracao.setLayoutData(new GridData(SWT.FILL, SWT.TOP, false, false, 1, 1));
-			lblUsuarioAlteracao.setText("");
 			lblUsuarioAlteracao.setFont(SWTResourceManager.getFont("Segoe UI", 9, SWT.BOLD));
+			
+			Label lblDataDeCadastro = new Label(cpOpcoes, SWT.NONE);
+			lblDataDeCadastro.setLayoutData(new GridData(SWT.RIGHT, SWT.BOTTOM, false, false, 1, 1));
+			lblDataDeCadastro.setText("Data Alteração");
+			lblDataDeCadastro.setFont(SWTResourceManager.getFont("Segoe UI", 9, SWT.NORMAL));
+			
+			lblDataAlteracao = new Label(cpOpcoes, SWT.NONE);
+			lblDataAlteracao.setLayoutData(new GridData(SWT.FILL, SWT.BOTTOM, false, true, 1, 1));
+			lblDataAlteracao.setText("");
+			lblDataAlteracao.setFont(SWTResourceManager.getFont("Segoe UI", 9, SWT.BOLD));
 		}
 		
 		//PARA ABRIR NO WINDOW BUILDER
-		if(getEditorInput() instanceof GenericEditorInput)
+		if(getEditorInput() instanceof GenericEditorInput){
 			initDataBindings = initBindings();
-		bindLog(initDataBindings);
+			bindLog(initDataBindings);
+		}
 //		else{
 //			initDataBindings = this.initDataBindings();
 //		}
@@ -198,17 +208,17 @@ public abstract class GenericEditor<T> extends EditorPart {
 	}
 	
 	private void bindLog(DataBindingContext bindingContext) {
-		if(!valueHasLog()){
+		if(valueHasLog()){
 			IObservableValue observeTextLblDataCadastroObserveWidget = WidgetProperties.text().observe(lblDataAlteracao);
 			IObservableValue valueDataCadastroObserveDetailValue = PojoProperties.value(mainClass, "log.dataAlteracao", Date.class).observeDetail(value);
 			bindingContext.bindValue(observeTextLblDataCadastroObserveWidget, valueDataCadastroObserveDetailValue, UVSHelper.uvsStringToDate(), UVSHelper.uvsDateToString());
 			//
 			IObservableValue observeTextLblUsuarioCadastroObserveWidget = WidgetProperties.text().observe(lblUsuarioCadastro);
-			IObservableValue valueLogusuarioCadastrologinObserveDetailValue = PojoProperties.value(mainClass, "log.usuarioCadastro.login", String.class).observeDetail(value);
+			IObservableValue valueLogusuarioCadastrologinObserveDetailValue = PojoProperties.value(mainClass, "log.usuarioCadastro", Usuario.class).observeDetail(value);
 			bindingContext.bindValue(observeTextLblUsuarioCadastroObserveWidget, valueLogusuarioCadastrologinObserveDetailValue, null, null);
 			//
 			IObservableValue observeTextLblUltimaAlteracaoObserveWidget = WidgetProperties.text().observe(lblUsuarioAlteracao);
-			IObservableValue valueLogusuarioAlteracaologinObserveDetailValue = PojoProperties.value(mainClass, "log.usuarioAlteracao.login", String.class).observeDetail(value);
+			IObservableValue valueLogusuarioAlteracaologinObserveDetailValue = PojoProperties.value(mainClass, "log.usuarioAlteracao", Usuario.class).observeDetail(value);
 			bindingContext.bindValue(observeTextLblUltimaAlteracaoObserveWidget, valueLogusuarioAlteracaologinObserveDetailValue, null, null);
 		}
 	}
@@ -225,7 +235,7 @@ public abstract class GenericEditor<T> extends EditorPart {
 	}
 	
 	private boolean valueHasLog(){
-		return ReflectionHelper.getFieldByAnnotation(mainClass, Log.class).isEmpty();
+		return !ReflectionHelper.getFieldByAnnotation(mainClass, Log.class).isEmpty();
 	}
 	
 	@SuppressWarnings({ "unchecked", "rawtypes" })
@@ -251,8 +261,8 @@ public abstract class GenericEditor<T> extends EditorPart {
 				RollbackException re = (RollbackException) e.getCause();
 				if(re.getCause() != null && re.getCause().getClass().equals(DatabaseException.class)){
 					DatabaseException de = (DatabaseException) re.getCause();
-					if(de.getErrorCode() == 4002){
-						DialogHelper.openError("Já existe um registro com estas caracteristicas.");
+					if(de.getErrorCode() == 4002 && de.getCause() instanceof PSQLException && ((PSQLException)de.getCause()).getSQLState().equals("23505")){
+						DialogHelper.openWarning("Já existe um registro com estas caracteristicas.");
 						return false;
 					}
 				}
@@ -269,18 +279,22 @@ public abstract class GenericEditor<T> extends EditorPart {
 	}
 	
 	protected <Y> boolean addItens(GenericService<Y> service, IObservableValue value, ColumnViewer tv, List<Y> list){
-		return addItens(service, value, tv, true, getCurrentObject());
+		return addItens(service, value, tv, list, true);
+	}
+
+	protected <Y> boolean addItens(GenericService<Y> service, IObservableValue value, ColumnViewer tv, List<Y> list, boolean addItenOnTable){
+		return addItens(service, value, tv, true, getCurrentObject(), addItenOnTable);
 	}
 	
 	@SuppressWarnings("unchecked")
-	protected <Y> boolean addItens(GenericService<Y> service, IObservableValue value, ColumnViewer tv, boolean resetValue, Object father){
+	protected <Y> boolean addItens(GenericService<Y> service, IObservableValue value, ColumnViewer tv, boolean resetValue, Object father, boolean addItenOnTable){
 		if(!salvar(service, value, false))
 			return false;
 			
-		SWTHelper.setSuccesfulMessageInBottomScreen("Item salvo com sucesso !", getEditorSite().getActionBars().getStatusLineManager());
+		SWTHelper.setSuccesfulMessageInBottomScreen("Item salvo com sucesso !");
 		
 		List<Y> elementos = (List<Y>) tv.getInput();
-		if(!elementos.contains(value.getValue()))
+		if(!elementos.contains(value.getValue()) && addItenOnTable)
 			elementos.add((Y) value.getValue());
 
 		//Aqui ele tenta resetar o value
@@ -301,7 +315,7 @@ public abstract class GenericEditor<T> extends EditorPart {
 
 	protected Button createButtonAddItem(Composite cp, SelectionListener listener){
 		Button btnAddItem = new Button(cp, SWT.NONE);
-		btnAddItem.setLayoutData(new GridData(SWT.RIGHT, SWT.CENTER, false, false, 1, 1));
+		btnAddItem.setLayoutData(new GridData(SWT.RIGHT, SWT.BOTTOM, false, false, 1, 1));
 		btnAddItem.setImage(ImageRepository.SAVE_16.getImage());
 		btnAddItem.addSelectionListener(listener);
 		return btnAddItem;
@@ -318,18 +332,27 @@ public abstract class GenericEditor<T> extends EditorPart {
 	@Override
 	public void setFocus() {
 		Control[] children = cpPrincipal.getChildren();
-		for(Control ctr : children){
-			if(ctr.isEnabled() && (ctr instanceof Text || ctr instanceof Combo)){
-				ctr.forceFocus();
-				break;
-			}
-		}
+		Control firsControlTextCombo = getFirsControlTextCombo(children);
+		if(firsControlTextCombo != null)
+			firsControlTextCombo.forceFocus();
+			
 	}
 
+	public Control getFirsControlTextCombo(Control[] children){
+		for(Control ctr : children){
+			if(ctr.isEnabled() && (ctr instanceof Text || ctr instanceof Combo))
+				return ctr;
+			if(ctr instanceof Composite)
+				return getFirsControlTextCombo(((Composite) ctr).getChildren());
+		}
+		
+		return null;
+	}
+	
 	@Override
 	public void doSave(IProgressMonitor monitor) {
 	}
-
+	
 	@Override
 	public void doSaveAs() {
 	}
